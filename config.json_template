@@ -1,0 +1,13 @@
+{
+    "connection" : {
+        "gh_api_url" : "https://api.github.com",
+        "gh_api_key" : "<YOUR_API_KEY>"
+    },
+    "organizations" : {
+        "gh_org_names" : [
+            "<ORG1>",
+            "<ORG2>",
+            "<ORG3>"
+        ]
+    }
+}
