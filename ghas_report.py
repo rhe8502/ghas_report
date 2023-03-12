@@ -3,7 +3,6 @@
 import requests
 import csv
 import json
-#from json import load, loads, JSONDecodeError
 from datetime import datetime
 
 # Load configuration from config.json 
@@ -11,9 +10,7 @@ def load_config():
     try:
         with open('config.json', 'r') as config_file:
             config = json.load(config_file)
-            api_url = config['connection']['gh_api_url']
-            api_key = config['connection']['gh_api_key']
-            org_names = config['organizations']['gh_org_names']
+            
     except FileNotFoundError:
         print('Error: config.json file not found')
         exit(1)
@@ -21,6 +18,10 @@ def load_config():
         print('Error: config.json file is not valid JSON')
         exit(1)
     
+    api_url = config['connection']['gh_api_url']
+    api_key = config['connection']['gh_api_key']
+    org_names = config['organizations']['gh_org_names']
+
     return api_url, api_key, org_names
 
 # Handle API error responses
@@ -172,8 +173,8 @@ def get_alert_count(api_url, api_key, org_names):
 # Main function
 def main():
     api_url, api_key, org_names = load_config()
-    write_codeql_alerts(get_codql_alerts(api_url, api_key, org_names))
     write_alert_count(get_alert_count(api_url, api_key, org_names))
-   
+    write_codeql_alerts(get_codql_alerts(api_url, api_key, org_names))
+    
 if __name__ == '__main__':
     main()

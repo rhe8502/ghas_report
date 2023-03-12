@@ -2,3 +2,4 @@
 config.json
 *.csv
 *.json
+print_config.py
