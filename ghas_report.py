@@ -83,15 +83,31 @@ def get_dependabot_alerts(api_url, api_key, org_name=None, owner=None, repo_name
 
     return dependabot_alerts, dependabot_alert_count
 
-# Write open code scan findings to a CSV file
+# Write alert counts to a CSV file
+def write_alert_count_csv(alert_count, project_name):
+    now = datetime.now()
+    filename = f"{project_name}-alert_count-{now.strftime('%Y%m%d%H%M%S')}.csv"
+
+    # Write the header row
+    alert_count.insert(0, ['Organization', "Repository", 'Code Scanning Alerts', 'Secret Scanning Alerts', 'Dependabot Alerts'])
+
+    try:
+        with open(filename, 'w', newline='') as f:
+            writer = csv.writer(f)
+            for alerts in alert_count:
+                writer.writerow(alerts)
+            print(f"Successfully wrote alert count for project \"{project_name}\" to file {filename}")
+    except IOError:
+        print(f"Error writing alert count for project {project_name} to file {filename}")
+
+# Write code scan findings to a CSV file
 def write_codeql_alerts_csv(codeql_alerts, project_name):    
     now = datetime.now()
     filename = f"{project_name}-codeql_alerts-{now.strftime('%Y%m%d%H%M%S')}.csv"
 
     # Write the header row
-    codeql_alerts.insert(0, ['Organization', 'Repository', 'Date Created', 'Date Updated', 'Severity', 'Rule ID', 'Description', 'File', 'Category', 'URL'])
+    codeql_alerts.insert(0, ['Organization', 'Repository', 'Date Created', 'Date Updated', 'Severity', 'Rule ID', 'Description', 'File', 'Category', 'GitHub URL'])
 
-    # Write the alerts to a CSV file
     try:
         with open(filename, 'w', newline='') as f:
             writer = csv.writer(f)
@@ -102,26 +118,27 @@ def write_codeql_alerts_csv(codeql_alerts, project_name):
         print("Error: I/O error")
         exit(1)
 
-# Write alert counts to a CSV file
-def write_alert_count_csv(alert_count, project_name):
+# Write secret scan findings to a CSV file
+def write_secretscan_alerts_csv(secretscan_alerts, project_name):    
     now = datetime.now()
-    filename = f"{project_name}-alert_count-{now.strftime('%Y%m%d%H%M%S')}.csv"
+    filename = f"{project_name}-secretscan_alerts-{now.strftime('%Y%m%d%H%M%S')}.csv"
 
     # Write the header row
-    alert_count.insert(0, ['Organization', "Repository", 'Code Scanning Alerts', 'Secret Scanning Alerts', 'Dependabot Alerts'])
+    secretscan_alerts.insert(0, ['Organization', 'Repository', 'Date Created', 'Date Updated', 'Secret Type Name', 'Secret Type', 'GitHub URL'])
 
-    # Write the alert counts to a CSV file
     try:
         with open(filename, 'w', newline='') as f:
             writer = csv.writer(f)
-            for alerts in alert_count:
-                writer.writerow(alerts)
-            print(f"Successfully wrote alert count for project \"{project_name}\" to file {filename}")
+            for secretscan_alert in secretscan_alerts:
+                writer.writerow(secretscan_alert)
+            print(f"Successfully wrote secret scan findings for project \"{project_name}\" to file {filename}")
     except IOError:
-        print(f"Error writing alert count for project {project_name} to file {filename}")
+        print("Error: I/O error")
+        exit(1)
 
-# Get alert counts for each organization and add them to a list
-def get_alert_count(api_url, api_key, project_data):
+
+# Process alert counts for each organization and add them to a list
+def process_alert_count(api_url, api_key, project_data):
     alert_count = []
 
     if "organizations" in project_data:
@@ -147,12 +164,11 @@ def get_alert_count(api_url, api_key, project_data):
 
     return alert_count
 
-def get_codql_alerts(api_url, api_key, project_data):
+def selected_code_scanning_alerts(api_url, api_key, project_data):
     codeql_alerts = []
 
     # Get CodeQL alerts for each organization listed in the project data   
     if "organizations" in project_data:            
-        # for org_name in project_data["organizations"]:
         for org_name in project_data.get('organizations'):
             if org_name != "":
                 try:
@@ -177,7 +193,6 @@ def get_codql_alerts(api_url, api_key, project_data):
 
     # Get CodeQL alerts for each repository listed in the project data
     if "repositories" in project_data:
-        # for repo_name in project_data["repositories"]:
         for repo_name in project_data.get('repositories'):
             if repo_name != "":
                 try:
@@ -188,7 +203,6 @@ def get_codql_alerts(api_url, api_key, project_data):
                             codeql_alerts.append([
                                 alert.get('organization', {}).get('name', "N/A"),
                                 repo_name,
-                                alert.get('repository', {}).get('name', "N/A"),
                                 datetime.strptime(alert.get('created_at', "N/A"), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d"),
                                 datetime.strptime(alert.get('updated_at', "N/A"), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d"),
                                 alert.get('rule', {}).get('security_severity_level', "N/A"),
@@ -203,6 +217,55 @@ def get_codql_alerts(api_url, api_key, project_data):
                     pass
 
     return codeql_alerts
+
+def selected_secretscan_alerts(api_url, api_key, project_data):
+    secretscan_alerts = []
+
+    # Get secret scanning alerts for each organization listed in the project data   
+    if "organizations" in project_data:            
+        for org_name in project_data.get('organizations'):
+            if org_name != "":
+                try:
+                    alerts = (get_secret_scanning_alerts(api_url, api_key, org_name=org_name)[0])
+                    if len(alerts) > 0:
+                        for alert in alerts:
+                            secretscan_alerts.append([
+                                org_name,
+                                alert.get('repository', {}).get('name', "N/A"),
+                                datetime.strptime(alert.get('created_at', "N/A"), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d"),
+                                datetime.strptime(alert.get('updated_at', "N/A"), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d"),
+                                alert.get('secret_type_display_name', "N/A"),
+                                alert.get('secret_type', "N/A"),
+                                alert.get('html_url', "N/A")
+                                ])
+                except Exception as e:
+                    print(f"Error getting alerts for org: {org_name} - {e}")
+                    pass
+
+    # Get secret scanning alerts for each repository listed in the project data
+    if "repositories" in project_data:
+        for repo_name in project_data.get('repositories'):
+            if repo_name != "":
+                try:
+                    owner = project_data.get('owner')  # use .get() to avoid NoneType error
+                    alerts = (get_code_scanning_alerts(api_url, api_key, owner=owner, repo_name=repo_name)[0])
+                    if len(alerts) > 0:
+                        for alert in alerts:
+                            secretscan_alerts.append([
+                                alert.get('organization', {}).get('name', "N/A"),
+                                repo_name,
+                                alert.get('repository', {}).get('name', "N/A"),
+                                datetime.strptime(alert.get('created_at', "N/A"), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d"),
+                                datetime.strptime(alert.get('updated_at', "N/A"), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d"),
+                                alert.get('secret_type_display_name', "N/A"),
+                                alert.get('secret_type', "N/A"),
+                                alert.get('html_url', "N/A")
+                                ])
+                except Exception as e:
+                    print(f"Error getting alerts for repo: {repo_name} - {e}")
+                    pass
+
+    return secretscan_alerts
 
 def main():
     # Load configuration from config.json file
@@ -228,15 +291,23 @@ def main():
         "X-GitHub-Api-Version": f"{api_version}"
     }
 
+  # Get open secret scan findings for each organization and write them to a CSV file
+    for project_name, project_data in config.get('projects').items():
+        if project_name != "":
+            write_secretscan_alerts_csv(selected_secretscan_alerts(api_url, api_key, project_data), project_name)
+
+    '''
     # Get alert counts for each project and write them to a CSV file
     for project_name, project_data in config.get('projects').items():
         if project_name != "":
-            write_alert_count_csv(get_alert_count(api_url, api_key, project_data), project_name)
+            write_alert_count_csv(process_alert_count(api_url, api_key, project_data), project_name)
 
     # Get open code scan findings for each organization and write them to a CSV file
     for project_name, project_data in config.get('projects').items():
         if project_name != "":
-            write_codeql_alerts_csv(get_codql_alerts(api_url, api_key, project_data), project_name)
+            write_codeql_alerts_csv(selected_code_scanning_alerts(api_url, api_key, project_data), project_name)
+    '''
+
 
 if __name__ == '__main__':
     main()
