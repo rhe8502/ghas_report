@@ -136,9 +136,27 @@ def write_secretscan_alerts_csv(secretscan_alerts, project_name):
         print("Error: I/O error")
         exit(1)
 
+# Write DependaBot scan findings to a CSV file
+def write_dependabot_alerts_csv(dependabot_alerts, project_name):    
+    now = datetime.now()
+    filename = f"{project_name}-dependabot_alerts-{now.strftime('%Y%m%d%H%M%S')}.csv"
+
+    # Write the header row
+    # dependabot_alerts.insert(0, ['Organization', 'Repository', 'Date Created', 'Date Updated', 'Secret Type Name', 'Secret Type', 'GitHub URL'])
+
+    try:
+        with open(filename, 'w', newline='') as f:
+            writer = csv.writer(f)
+            for dependabot_alert in dependabot_alerts:
+                writer.writerow(dependabot_alert)
+            print(f"Successfully wrote Dependabot scan findings for project \"{project_name}\" to file {filename}")
+    except IOError:
+        print("Error: I/O error")
+        exit(1)
+
 
 # Process alert counts for each organization and add them to a list
-def process_alert_count(api_url, api_key, project_data):
+def alert_count(api_url, api_key, project_data):
     alert_count = []
 
     if "organizations" in project_data:
@@ -164,7 +182,7 @@ def process_alert_count(api_url, api_key, project_data):
 
     return alert_count
 
-def selected_code_scanning_alerts(api_url, api_key, project_data):
+def code_scanning_alerts(api_url, api_key, project_data):
     codeql_alerts = []
 
     # Get CodeQL alerts for each organization listed in the project data   
@@ -218,7 +236,7 @@ def selected_code_scanning_alerts(api_url, api_key, project_data):
 
     return codeql_alerts
 
-def selected_secretscan_alerts(api_url, api_key, project_data):
+def secret_scanning_alerts(api_url, api_key, project_data):
     secretscan_alerts = []
 
     # Get secret scanning alerts for each organization listed in the project data   
@@ -267,6 +285,57 @@ def selected_secretscan_alerts(api_url, api_key, project_data):
 
     return secretscan_alerts
 
+
+def dependabot_scanning_alerts(api_url, api_key, project_data):
+    dependabot_alerts = []
+
+    # Get Dependabot scanning alerts for each organization listed in the project data   
+    if "organizations" in project_data:            
+        for org_name in project_data.get('organizations'):
+            if org_name != "":
+                try:
+                    alerts = (get_secret_scanning_alerts(api_url, api_key, org_name=org_name)[0])
+                    if len(alerts) > 0:
+                        for alert in alerts:
+                            dependabot_alerts.append([
+                                org_name,
+                                alert.get('repository', {}).get('name', "N/A"),
+                                datetime.strptime(alert.get('created_at', "N/A"), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d"),
+                                datetime.strptime(alert.get('updated_at', "N/A"), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d"),
+                                alert.get('dependency', {}).get('package', {}).get('name', "N/A"),
+                                
+                                # alert.get('secret_type_display_name', "N/A"),
+                                # alert.get('secret_type', "N/A"),
+                                # alert.get('html_url', "N/A")
+                                ])
+                except Exception as e:
+                    print(f"Error getting alerts for org: {org_name} - {e}")
+                    pass
+
+    # Get secret scanning alerts for each repository listed in the project data
+    if "repositories" in project_data:
+        for repo_name in project_data.get('repositories'):
+            if repo_name != "":
+                try:
+                    owner = project_data.get('owner')  # use .get() to avoid NoneType error
+                    alerts = (get_code_scanning_alerts(api_url, api_key, owner=owner, repo_name=repo_name)[0])
+                    if len(alerts) > 0:
+                        for alert in alerts:
+                            dependabot_alerts.append([
+                                alert.get('organization', {}).get('name', "N/A"),
+                                repo_name,
+                                alert.get('repository', {}).get('name', "N/A"),
+                                datetime.strptime(alert.get('created_at', "N/A"), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d"),
+                                datetime.strptime(alert.get('updated_at', "N/A"), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d"),
+                                alert.get('dependency', {}).get('package', {}).get('name', "N/A")
+                                ])
+                except Exception as e:
+                    print(f"Error getting alerts for repo: {repo_name} - {e}")
+                    pass
+
+    return dependabot_alerts
+
+
 def main():
     # Load configuration from config.json file
     try:
@@ -291,21 +360,27 @@ def main():
         "X-GitHub-Api-Version": f"{api_version}"
     }
 
-  # Get open secret scan findings for each organization and write them to a CSV file
+  # Get Dependabot scan findings for each organization and write them to a CSV file
     for project_name, project_data in config.get('projects').items():
         if project_name != "":
-            write_secretscan_alerts_csv(selected_secretscan_alerts(api_url, api_key, project_data), project_name)
+            write_dependabot_alerts_csv(dependabot_scanning_alerts(api_url, api_key, project_data), project_name)
 
     '''
     # Get alert counts for each project and write them to a CSV file
     for project_name, project_data in config.get('projects').items():
         if project_name != "":
-            write_alert_count_csv(process_alert_count(api_url, api_key, project_data), project_name)
+            write_alert_count_csv(alert_count(api_url, api_key, project_data), project_name)
 
-    # Get open code scan findings for each organization and write them to a CSV file
+    # Get code scan findings for each organization and write them to a CSV file
     for project_name, project_data in config.get('projects').items():
         if project_name != "":
-            write_codeql_alerts_csv(selected_code_scanning_alerts(api_url, api_key, project_data), project_name)
+            write_codeql_alerts_csv(code_scanning_alerts(api_url, api_key, project_data), project_name)
+
+    # Get secret scan findings for each organization and write them to a CSV file
+    for project_name, project_data in config.get('projects').items():
+        if project_name != "":
+            write_secretscan_alerts_csv(secret_scanning_alerts(api_url, api_key, project_data), project_name)
+
     '''
 
 
