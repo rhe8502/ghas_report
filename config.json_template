@@ -2,6 +2,7 @@
     "connection" : {
         "gh_api_url": "https://api.github.com",
         "gh_api_key": "<YOUR_API_KEY>"
+        "gh_api_version": "2022-11-28"
     },
     "projects": {
         "<PROJECT1>": {

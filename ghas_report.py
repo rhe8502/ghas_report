@@ -6,7 +6,10 @@ import json
 from datetime import datetime
 
 # Handle API error responses
-def api_error_response(response, org_name,):
+def api_error_response(response, org_name):
+    if response.status_code == 400:
+        print(f"Error: GitHub API version \"{headers['X-GitHub-Api-Version']}\" no longer supported, check your API version in the config.json file.")
+        exit(1)
     if response.status_code == 401:
         print("Error: Authentication failed. Please check your API key.")
         exit(1)
@@ -26,11 +29,7 @@ def get_code_scanning_alerts(api_url, api_key, org_name=None, owner=None, repo_n
         url = f"{api_url}/repos/{owner}/{repo_name}/code-scanning/alerts?state=open"
     elif org_name:
         url = f"{api_url}/orgs/{org_name}/code-scanning/alerts?state=open"
-   
-    headers = {
-        "Authorization" : f"token {api_key}"
-    }
-    
+        
     response = requests.get(url, headers=headers)
 
     if response.status_code == 200:
@@ -50,11 +49,7 @@ def get_secret_scanning_alerts(api_url, api_key, org_name=None, owner=None, repo
         url = f"{api_url}/repos/{owner}/{repo_name}/secret-scanning/alerts?state=open"
     elif org_name:
         url = f"{api_url}/orgs/{org_name}/secret-scanning/alerts?state=open"
-    
-    headers = {
-        "Authorization" : f"token {api_key}"
-    } 
-
+  
     response = requests.get(url, headers=headers)
 
     if response.status_code == 200:
@@ -74,9 +69,6 @@ def get_dependabot_alerts(api_url, api_key, org_name=None, owner=None, repo_name
         url = f"{api_url}/repos/{owner}/{repo_name}/dependabot/alerts?state=open"
     elif org_name:
         url = f"{api_url}/orgs/{org_name}/dependabot/alerts?state=open"
-    headers = {
-        "Authorization" : f"token {api_key}"
-    }
 
     response = requests.get(url, headers=headers)
 
@@ -105,7 +97,7 @@ def write_codeql_alerts_csv(codeql_alerts, project_name):
             writer = csv.writer(f)
             for codeql_alert in codeql_alerts:
                 writer.writerow(codeql_alert)
-            print(f"Successfully wrote open code scan findings for project \"{project_name}\" to file {filename}")
+            print(f"Successfully wrote code scan findings for project \"{project_name}\" to file {filename}")
     except IOError:
         print("Error: I/O error")
         exit(1)
@@ -222,6 +214,14 @@ def main():
     # Get API URL and API key from config    
     api_url = config['connection']['gh_api_url']
     api_key = config['connection']['gh_api_key']
+    api_version = config['connection']['gh_api_version']
+
+    # Define headers for API requests to GitHub as global variable
+    global headers
+    headers = {
+        "Authorization": f"token {api_key}",
+        "X-GitHub-Api-Version": f"{api_version}"
+    }
 
     # Get alert counts for each project and write them to a CSV file
     for project_name, project_data in config["projects"].items():
