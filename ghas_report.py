@@ -7,6 +7,7 @@ from datetime import datetime
 
 # Handle API error responses
 def api_error_response(response, org_name):
+    data = response.json()
     if response.status_code == 400:
         print(f"Error: GitHub API version \"{headers.get('X-GitHub-Api-Version')}\" not supported, check your API version in the config.json file.")
         exit(1)
@@ -19,7 +20,10 @@ def api_error_response(response, org_name):
     elif response.status_code == 403:
         return(f"Error: Access to organization {org_name} is forbidden. Please check your API key permissions.")
     elif response.status_code == 404:
-        return(f"Error: Organization {org_name} not found.")
+        if "message" in data:
+           return(f"Error: {data['message']}") 
+        else:
+            return(f"Error: {org_name} not found.")
     else:
         return(f"Error getting alerts for {org_name}: {response.status_code}")  
 
@@ -29,7 +33,7 @@ def get_code_scanning_alerts(api_url, api_key, org_name=None, owner=None, repo_n
         url = f"{api_url}/repos/{owner}/{repo_name}/code-scanning/alerts?state=open"
     elif org_name:
         url = f"{api_url}/orgs/{org_name}/code-scanning/alerts?state=open"
-        
+   
     response = requests.get(url, headers=headers)
 
     if response.status_code == 200:
@@ -83,7 +87,7 @@ def get_dependabot_alerts(api_url, api_key, org_name=None, owner=None, repo_name
 
     return dependabot_alerts, dependabot_alert_count
 
-# Write alert counts to a CSV file
+# Write alert count to a CSV file
 def write_alert_count_csv(alert_count, project_name):
     now = datetime.now()
     filename = f"{project_name}-alert_count-{now.strftime('%Y%m%d%H%M%S')}.csv"
@@ -142,7 +146,7 @@ def write_dependabot_alerts_csv(dependabot_alerts, project_name):
     filename = f"{project_name}-dependabot_alerts-{now.strftime('%Y%m%d%H%M%S')}.csv"
 
     # Write the header row
-    # dependabot_alerts.insert(0, ['Organization', 'Repository', 'Date Created', 'Date Updated', 'Secret Type Name', 'Secret Type', 'GitHub URL'])
+    dependabot_alerts.insert(0, ['Organization', 'Repository', 'Date Created', 'Date Updated', 'Severity', 'Package Name', 'CVE ID', 'Summary', 'Scope', 'Manifest ID', 'GitHub URL'])
 
     try:
         with open(filename, 'w', newline='') as f:
@@ -266,7 +270,7 @@ def secret_scanning_alerts(api_url, api_key, project_data):
             if repo_name != "":
                 try:
                     owner = project_data.get('owner')  # use .get() to avoid NoneType error
-                    alerts = (get_code_scanning_alerts(api_url, api_key, owner=owner, repo_name=repo_name)[0])
+                    alerts = (get_secret_scanning_alerts(api_url, api_key, owner=owner, repo_name=repo_name)[0])
                     if len(alerts) > 0:
                         for alert in alerts:
                             secretscan_alerts.append([
@@ -294,41 +298,52 @@ def dependabot_scanning_alerts(api_url, api_key, project_data):
         for org_name in project_data.get('organizations'):
             if org_name != "":
                 try:
-                    alerts = (get_secret_scanning_alerts(api_url, api_key, org_name=org_name)[0])
+                    alerts = (get_dependabot_alerts(api_url, api_key, org_name=org_name)[0])
                     if len(alerts) > 0:
                         for alert in alerts:
                             dependabot_alerts.append([
-                                org_name,
+                                org_name, 
                                 alert.get('repository', {}).get('name', "N/A"),
                                 datetime.strptime(alert.get('created_at', "N/A"), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d"),
                                 datetime.strptime(alert.get('updated_at', "N/A"), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d"),
+                                alert.get('security_advisory', {}).get('severity', "N/A"),
                                 alert.get('dependency', {}).get('package', {}).get('name', "N/A"),
-                                
-                                # alert.get('secret_type_display_name', "N/A"),
-                                # alert.get('secret_type', "N/A"),
-                                # alert.get('html_url', "N/A")
+                                alert.get('security_advisory', {}).get('cve_id', "N/A"),
+                                alert.get('security_advisory', {}).get('summary', "N/A"),
+                                alert.get('dependency', {}).get('scope', "N/A"),
+                                alert.get('dependency', {}).get('manifest_path', "N/A"),
+                                # alert.get("security_advisory", {}).get("vulnerabilities", [{}])[0].get("vulnerable_version_range"),
+                                # alert.get('security_advisory', {}).get('vulnerabilities', [{}])[0].get('first_patched_version', {}).get('identifier', "NAA")
+                                alert.get('html_url', "N/A")                                
                                 ])
                 except Exception as e:
                     print(f"Error getting alerts for org: {org_name} - {e}")
                     pass
 
-    # Get secret scanning alerts for each repository listed in the project data
+    # Get DEpendabot scanning alerts for each repository listed in the project data
     if "repositories" in project_data:
         for repo_name in project_data.get('repositories'):
             if repo_name != "":
                 try:
                     owner = project_data.get('owner')  # use .get() to avoid NoneType error
-                    alerts = (get_code_scanning_alerts(api_url, api_key, owner=owner, repo_name=repo_name)[0])
+                    alerts = (get_dependabot_alerts(api_url, api_key, owner=owner, repo_name=repo_name)[0])
                     if len(alerts) > 0:
                         for alert in alerts:
                             dependabot_alerts.append([
                                 alert.get('organization', {}).get('name', "N/A"),
                                 repo_name,
-                                alert.get('repository', {}).get('name', "N/A"),
                                 datetime.strptime(alert.get('created_at', "N/A"), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d"),
                                 datetime.strptime(alert.get('updated_at', "N/A"), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d"),
-                                alert.get('dependency', {}).get('package', {}).get('name', "N/A")
-                                ])
+                                alert.get('security_advisory', {}).get('severity', "N/A"),
+                                alert.get('dependency', {}).get('package', {}).get('name', "N/A"),
+                                alert.get('security_advisory', {}).get('cve_id', "N/A"),
+                                alert.get('security_advisory', {}).get('summary', "N/A"),
+                                alert.get('dependency', {}).get('scope', "N/A"),
+                                alert.get('dependency', {}).get('manifest_path', "N/A"),
+                                # alert.get("security_advisory", {}).get("vulnerabilities", [{}])[0].get("vulnerable_version_range"),
+                                # alert.get('security_advisory', {}).get('vulnerabilities', [{}])[0].get('first_patched_version', {}).get('identifier', "NAA")
+                                alert.get('html_url', "N/A")                                
+                               ])
                 except Exception as e:
                     print(f"Error getting alerts for repo: {repo_name} - {e}")
                     pass
@@ -359,30 +374,26 @@ def main():
         "Authorization": f"token {api_key}",
         "X-GitHub-Api-Version": f"{api_version}"
     }
-
-  # Get Dependabot scan findings for each organization and write them to a CSV file
-    for project_name, project_data in config.get('projects').items():
-        if project_name != "":
-            write_dependabot_alerts_csv(dependabot_scanning_alerts(api_url, api_key, project_data), project_name)
-
-    '''
-    # Get alert counts for each project and write them to a CSV file
+    
+    # Get Alert count for each project and write them to a CSV file
     for project_name, project_data in config.get('projects').items():
         if project_name != "":
             write_alert_count_csv(alert_count(api_url, api_key, project_data), project_name)
-
-    # Get code scan findings for each organization and write them to a CSV file
+    
+    # Get Code scan findings for each organization and write them to a CSV file
     for project_name, project_data in config.get('projects').items():
         if project_name != "":
             write_codeql_alerts_csv(code_scanning_alerts(api_url, api_key, project_data), project_name)
-
-    # Get secret scan findings for each organization and write them to a CSV file
+    
+    # Get Secret scan findings for each organization and write them to a CSV file
     for project_name, project_data in config.get('projects').items():
         if project_name != "":
             write_secretscan_alerts_csv(secret_scanning_alerts(api_url, api_key, project_data), project_name)
 
-    '''
-
-
+    # Get Dependabot scan findings for each organization and write them to a CSV file
+    for project_name, project_data in config.get('projects').items():
+        if project_name != "":
+            write_dependabot_alerts_csv(dependabot_scanning_alerts(api_url, api_key, project_data), project_name)
+            
 if __name__ == '__main__':
     main()
