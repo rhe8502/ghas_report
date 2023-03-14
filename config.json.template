@@ -9,13 +9,11 @@
             "owner": "<OWNER>",
             "organizations": [
                     "<ORG1>",
-                    "<ORG2>",
-                    "<ORG3>"
+                    "<ORG2>"
             ],
             "repositories": [
                     "<REPO1>",
-                    "<REPO2>",
-                    "<REPO3>"
+                    "<REPO2>"
             ]
         },
         "<PROJECT2>": {
@@ -26,9 +24,8 @@
             ],
             "repositories": [
                     "<REPO1>",
-                    "<REPO2>",
-                    "<REPO3>"
-          ]
+                    "<REPO2>"
+            ]
         }
     }
 }

@@ -8,7 +8,7 @@ from datetime import datetime
 # Handle API error responses
 def api_error_response(response, org_name):
     if response.status_code == 400:
-        print(f"Error: GitHub API version \"{headers['X-GitHub-Api-Version']}\" no longer supported, check your API version in the config.json file.")
+        print(f"Error: GitHub API version \"{headers.get('X-GitHub-Api-Version')}\" not supported, check your API version in the config.json file.")
         exit(1)
     if response.status_code == 401:
         print("Error: Authentication failed. Please check your API key.")
@@ -125,20 +125,22 @@ def get_alert_count(api_url, api_key, project_data):
     alert_count = []
 
     if "organizations" in project_data:
-            for org_name in project_data["organizations"]:
+            #for org_name in project_data["organizations"]:
+            for org_name in project_data.get('organizations'):
                 if org_name != "":
                     try:
-                        alert_count.append([org_name, "", get_code_scanning_alerts(api_url, api_key, org_name=org_name)[1], get_secret_scanning_alerts(api_url, api_key, org_name=org_name)[1], get_dependabot_alerts(api_url, api_key, org_name=org_name)[1]])
+                        alert_count.append([org_name, "N/A", get_code_scanning_alerts(api_url, api_key, org_name=org_name)[1], get_secret_scanning_alerts(api_url, api_key, org_name=org_name)[1], get_dependabot_alerts(api_url, api_key, org_name=org_name)[1]])
                     except Exception as e:
                         print(f"Error getting alert count for org: {org_name} - {e}")
                         pass
    
     if "repositories" in project_data:
-        for repo_name in project_data["repositories"]:
+        # for repo_name in project_data["repositories"]:
+        for repo_name in project_data.get('repositories'):
             if repo_name != "":
                 try:
-                    owner = project_data.get("owner")  # use .get() to avoid NoneType error
-                    alert_count.append(["", repo_name, get_code_scanning_alerts(api_url, api_key, owner=owner, repo_name=repo_name)[1], get_secret_scanning_alerts(api_url, api_key, owner=owner, repo_name=repo_name)[1], get_dependabot_alerts(api_url, api_key, owner=owner, repo_name=repo_name)[1]])
+                    owner = project_data.get('owner')  # use .get() to avoid NoneType error
+                    alert_count.append(["N/A", repo_name, get_code_scanning_alerts(api_url, api_key, owner=owner, repo_name=repo_name)[1], get_secret_scanning_alerts(api_url, api_key, owner=owner, repo_name=repo_name)[1], get_dependabot_alerts(api_url, api_key, owner=owner, repo_name=repo_name)[1]])
                 except Exception as e:
                     print(f"Error getting alert count for repo: {repo_name} - {e}")
                     pass
@@ -149,8 +151,9 @@ def get_codql_alerts(api_url, api_key, project_data):
     codeql_alerts = []
 
     # Get CodeQL alerts for each organization listed in the project data   
-    if "organizations" in project_data:                
-        for org_name in project_data["organizations"]:
+    if "organizations" in project_data:            
+        # for org_name in project_data["organizations"]:
+        for org_name in project_data.get('organizations'):
             if org_name != "":
                 try:
                     alerts = (get_code_scanning_alerts(api_url, api_key, org_name=org_name)[0])
@@ -158,15 +161,15 @@ def get_codql_alerts(api_url, api_key, project_data):
                         for alert in alerts:
                             codeql_alerts.append([
                                 org_name,
-                                alert['repository']['name'],
-                                datetime.strptime(alert['created_at'], "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d"),
-                                datetime.strptime(alert['updated_at'], "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d"),
-                                alert['rule']['security_severity_level'],
-                                alert['rule']['id'],
-                                alert['most_recent_instance']['message']['text'],
-                                alert['most_recent_instance']['location']['path'],
-                                alert['most_recent_instance']['category'],
-                                alert['html_url']
+                                alert.get('repository', {}).get('name', "N/A"),
+                                datetime.strptime(alert.get('created_at', "N/A"), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d"),
+                                datetime.strptime(alert.get('updated_at', "N/A"), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d"),
+                                alert.get('rule', {}).get('security_severity_level', "N/A"),
+                                alert.get('rule', {}).get('id', "N/A"),
+                                alert.get('most_recent_instance', {}).get('message', {}).get('text', "N/A"),
+                                alert.get('most_recent_instance', {}).get('location', {}).get('path', "N/A"),
+                                alert.get('most_recent_instance', {}).get('category', "N/A"),
+                                alert.get('html_url', "N/A")
                                 ])
                 except Exception as e:
                     print(f"Error getting alerts for org: {org_name} - {e}")
@@ -174,24 +177,26 @@ def get_codql_alerts(api_url, api_key, project_data):
 
     # Get CodeQL alerts for each repository listed in the project data
     if "repositories" in project_data:
-        for repo_name in project_data["repositories"]:
+        # for repo_name in project_data["repositories"]:
+        for repo_name in project_data.get('repositories'):
             if repo_name != "":
                 try:
-                    owner = project_data.get("owner")  # use .get() to avoid NoneType error
+                    owner = project_data.get('owner')  # use .get() to avoid NoneType error
                     alerts = (get_code_scanning_alerts(api_url, api_key, owner=owner, repo_name=repo_name)[0])
                     if len(alerts) > 0:
                         for alert in alerts:
                             codeql_alerts.append([
-                                "",
+                                alert.get('organization', {}).get('name', "N/A"),
                                 repo_name,
-                                datetime.strptime(alert['created_at'], "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d"),
-                                datetime.strptime(alert['updated_at'], "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d"),
-                                alert['rule']['security_severity_level'],
-                                alert['rule']['id'],
-                                alert['most_recent_instance']['message']['text'],
-                                alert['most_recent_instance']['location']['path'],
-                                alert['most_recent_instance']['category'],
-                                alert['html_url']
+                                alert.get('repository', {}).get('name', "N/A"),
+                                datetime.strptime(alert.get('created_at', "N/A"), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d"),
+                                datetime.strptime(alert.get('updated_at', "N/A"), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d"),
+                                alert.get('rule', {}).get('security_severity_level', "N/A"),
+                                alert.get('rule', {}).get('id', "N/A"),
+                                alert.get('most_recent_instance', {}).get('message', {}).get('text', "N/A"),
+                                alert.get('most_recent_instance', {}).get('location', {}).get('path', "N/A"),
+                                alert.get('most_recent_instance', {}).get('category', "N/A"),
+                                alert.get('html_url', "N/A")
                                 ])
                 except Exception as e:
                     print(f"Error getting alerts for repo: {repo_name} - {e}")
@@ -212,10 +217,10 @@ def main():
         exit(1)
 
     # Get API URL and API key from config    
-    api_url = config['connection']['gh_api_url']
-    api_key = config['connection']['gh_api_key']
-    api_version = config['connection']['gh_api_version']
-
+    api_url = config.get('connection', {}).get('gh_api_url')
+    api_key = config.get('connection', {}).get('gh_api_key')
+    api_version = config.get('connection', {}).get('gh_api_version')
+    
     # Define headers for API requests to GitHub as global variable
     global headers
     headers = {
@@ -224,12 +229,12 @@ def main():
     }
 
     # Get alert counts for each project and write them to a CSV file
-    for project_name, project_data in config["projects"].items():
+    for project_name, project_data in config.get('projects').items():
         if project_name != "":
             write_alert_count_csv(get_alert_count(api_url, api_key, project_data), project_name)
 
     # Get open code scan findings for each organization and write them to a CSV file
-    for project_name, project_data in config["projects"].items():
+    for project_name, project_data in config.get('projects').items():
         if project_name != "":
             write_codeql_alerts_csv(get_codql_alerts(api_url, api_key, project_data), project_name)
 
