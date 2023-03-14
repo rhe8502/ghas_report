@@ -1,13 +1,33 @@
 {
     "connection" : {
-        "gh_api_url" : "https://api.github.com",
-        "gh_api_key" : "<YOUR_API_KEY>"
+        "gh_api_url": "https://api.github.com",
+        "gh_api_key": "<YOUR_API_KEY>"
     },
-    "organizations" : {
-        "gh_org_names" : [
-            "<ORG1>",
-            "<ORG2>",
-            "<ORG3>"
-        ]
+    "projects": {
+        "<PROJECT1>": {
+            "owner": "<OWNER>",
+            "organizations": [
+                    "<ORG1>",
+                    "<ORG2>",
+                    "<ORG3>"
+            ],
+            "repositories": [
+                    "<REPO1>",
+                    "<REPO2>",
+                    "<REPO3>"
+            ]
+        },
+        "<PROJECT2>": {
+            "owner": "<OWNER>",
+            "organizations": [
+                    "",
+                    ""
+            ],
+            "repositories": [
+                    "<REPO1>",
+                    "<REPO2>",
+                    "<REPO3>"
+          ]
+        }
     }
 }
