@@ -23,7 +23,8 @@ def api_error_response(response, repo_name, org_name):
         else:
             raise Exception(error_message)
     else:
-        raise Exception(f"Error getting alerts for {org_name}: {response.status_code}")
+        raise Exception(f"Error {response.status_code}: {response.json().get('message', '')}, Errors: {response.json().get('errors', '')}")
+
 
 # Get Code Scanning alerts and alert count
 def get_code_scanning_alerts(api_url, org_name=None, owner=None, repo_name=None):
