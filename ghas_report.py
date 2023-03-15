@@ -43,8 +43,7 @@ def get_code_scanning_alerts(api_url, api_key, org_name=None, owner=None, repo_n
         error_msg = api_error_response(response, org_name)
         if error_msg is not None:
             print(error_msg)
-            return
-                
+            return         
     return code_scanning_alerts, code_scanning_alert_count
 
 # Get Secret Scanning alerts and alert count
@@ -64,7 +63,6 @@ def get_secret_scanning_alerts(api_url, api_key, org_name=None, owner=None, repo
         if error_msg is not None:
             print(error_msg)
             return
-
     return secret_scanning_alerts, secret_scanning_alert_count
 
 # Get Dependabot alerts and alert count
@@ -84,7 +82,6 @@ def get_dependabot_alerts(api_url, api_key, org_name=None, owner=None, repo_name
         if error_msg is not None:
             print(error_msg)
             return
-
     return dependabot_alerts, dependabot_alert_count
 
 # Write alert count to a CSV file
@@ -279,25 +276,25 @@ def main():
         "Authorization": f"token {api_key}",
         "X-GitHub-Api-Version": f"{api_version}"
     }
-    
+
     # Get Alert count for each project and write them to a CSV file
     for project_name, project_data in config.get('projects').items():
-        if project_name != "":
+        if project_name:
             write_alert_count_csv(alert_count(api_url, api_key, project_data), project_name)
 
     # Get Code scan findings for each organization and write them to a CSV file
     for project_name, project_data in config.get('projects').items():
-        if project_name != "":
+        if project_name:
             write_codeql_alerts_csv(code_scanning_alerts(api_url, api_key, project_data), project_name)
     
     # Get Secret scan findings for each organization and write them to a CSV file
     for project_name, project_data in config.get('projects').items():
-        if project_name != "":
+        if project_name:
             write_secretscan_alerts_csv(secret_scanning_alerts(api_url, api_key, project_data), project_name)
    
     # Get Dependabot scan findings for each organization and write them to a CSV file
     for project_name, project_data in config.get('projects').items():
-        if project_name != "":
+        if project_name:
             write_dependabot_alerts_csv(dependabot_scanning_alerts(api_url, api_key, project_data), project_name)
             
 if __name__ == '__main__':
