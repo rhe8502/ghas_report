@@ -287,12 +287,10 @@ def main():
         "X-GitHub-Api-Version": f"{api_version}"
     }
     
-    '''
     # Get Alert count for each project and write them to a CSV file
     for project_name, project_data in config.get('projects').items():
         if project_name != "":
             write_alert_count_csv(alert_count(api_url, api_key, project_data), project_name)
-   '''
     
     # Get Code scan findings for each organization and write them to a CSV file
     for project_name, project_data in config.get('projects').items():
