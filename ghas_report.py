@@ -295,7 +295,6 @@ def main():
         if project_name != "":
             write_secretscan_alerts_csv(secret_scanning_alerts(api_url, api_key, project_data), project_name)
    
-   
     # Get Dependabot scan findings for each organization and write them to a CSV file
     for project_name, project_data in config.get('projects').items():
         if project_name != "":
