@@ -189,55 +189,27 @@ def alert_count(api_url, api_key, project_data):
 def code_scanning_alerts(api_url, api_key, project_data):
     codeql_alerts = []
 
-    # Get CodeQL alerts for each organization listed in the project data   
-    if "organizations" in project_data:            
-        for org_name in project_data.get('organizations'):
-            if org_name != "":
+    for obj_type in ['organizations', 'repositories']:
+        for obj_name in project_data.get(obj_type, []):
+            if obj_name:
                 try:
-                    alerts = (get_code_scanning_alerts(api_url, api_key, org_name=org_name)[0])
-                    if len(alerts) > 0:
-                        for alert in alerts:
-                            codeql_alerts.append([
-                                org_name,
-                                alert.get('repository', {}).get('name', "N/A"),
-                                datetime.strptime(alert.get('created_at', "N/A"), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d"),
-                                datetime.strptime(alert.get('updated_at', "N/A"), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d"),
-                                alert.get('rule', {}).get('security_severity_level', "N/A"),
-                                alert.get('rule', {}).get('id', "N/A"),
-                                alert.get('most_recent_instance', {}).get('message', {}).get('text', "N/A"),
-                                alert.get('most_recent_instance', {}).get('location', {}).get('path', "N/A"),
-                                alert.get('most_recent_instance', {}).get('category', "N/A"),
-                                alert.get('html_url', "N/A")
-                                ])
+                    owner = project_data.get('owner') if obj_type == 'repositories' else None
+                    alerts = get_code_scanning_alerts(api_url, api_key, owner=owner, org_name=obj_name if obj_type == 'organizations' else None, repo_name=obj_name if obj_type == 'repositories' else None)[0]
+                    for alert in alerts:
+                        codeql_alerts.append([
+                            obj_name if obj_type == 'organizations' else alert.get('organization', {}).get('name', "N/A"),
+                            obj_name if obj_type == 'repositories' else alert.get('repository', {}).get('name', "N/A"),
+                            datetime.strptime(alert.get('created_at', "N/A"), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d"),
+                            datetime.strptime(alert.get('updated_at', "N/A"), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d"),
+                            alert.get('rule', {}).get('security_severity_level', "N/A"),
+                            alert.get('rule', {}).get('id', "N/A"),
+                            alert.get('most_recent_instance', {}).get('message', {}).get('text', "N/A"),
+                            alert.get('most_recent_instance', {}).get('location', {}).get('path', "N/A"),
+                            alert.get('most_recent_instance', {}).get('category', "N/A"),
+                            alert.get('html_url', "N/A")
+                        ])
                 except Exception as e:
-                    print(f"Error getting alerts for org: {org_name} - {e}")
-                    pass
-
-    # Get CodeQL alerts for each repository listed in the project data
-    if "repositories" in project_data:
-        for repo_name in project_data.get('repositories'):
-            if repo_name != "":
-                try:
-                    owner = project_data.get('owner')  # use .get() to avoid NoneType error
-                    alerts = (get_code_scanning_alerts(api_url, api_key, owner=owner, repo_name=repo_name)[0])
-                    if len(alerts) > 0:
-                        for alert in alerts:
-                            codeql_alerts.append([
-                                alert.get('organization', {}).get('name', "N/A"),
-                                repo_name,
-                                datetime.strptime(alert.get('created_at', "N/A"), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d"),
-                                datetime.strptime(alert.get('updated_at', "N/A"), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d"),
-                                alert.get('rule', {}).get('security_severity_level', "N/A"),
-                                alert.get('rule', {}).get('id', "N/A"),
-                                alert.get('most_recent_instance', {}).get('message', {}).get('text', "N/A"),
-                                alert.get('most_recent_instance', {}).get('location', {}).get('path', "N/A"),
-                                alert.get('most_recent_instance', {}).get('category', "N/A"),
-                                alert.get('html_url', "N/A")
-                                ])
-                except Exception as e:
-                    print(f"Error getting alerts for repo: {repo_name} - {e}")
-                    pass
-
+                    print(f"Error getting alerts for {obj_type[:-1]}: {obj_name} - {e}")
     return codeql_alerts
 
 def secret_scanning_alerts(api_url, api_key, project_data):
@@ -251,18 +223,17 @@ def secret_scanning_alerts(api_url, api_key, project_data):
                     alerts = get_secret_scanning_alerts(api_url, api_key, owner=owner, org_name=obj_name if obj_type == 'organizations' else None, repo_name=obj_name if obj_type == 'repositories' else None)[0]
                     for alert in alerts:
                         secretscan_alerts.append([
-                                obj_name if obj_type == 'organizations' else alert.get('organization', {}).get('name', "N/A"),
-                                obj_name if obj_type == 'repositories' else alert.get('repository', {}).get('name', "N/A"),
-                                alert.get('repository', {}).get('name', "N/A"),
-                                datetime.strptime(alert.get('created_at', "N/A"), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d"),
-                                datetime.strptime(alert.get('updated_at', "N/A"), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d"),
-                                alert.get('secret_type_display_name', "N/A"),
-                                alert.get('secret_type', "N/A"),
-                                alert.get('html_url', "N/A")
-                                ])
+                            obj_name if obj_type == 'organizations' else alert.get('organization', {}).get('name', "N/A"),
+                            obj_name if obj_type == 'repositories' else alert.get('repository', {}).get('name', "N/A"),
+                            alert.get('repository', {}).get('name', "N/A"),
+                            datetime.strptime(alert.get('created_at', "N/A"), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d"),
+                            datetime.strptime(alert.get('updated_at', "N/A"), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d"),
+                            alert.get('secret_type_display_name', "N/A"),
+                            alert.get('secret_type', "N/A"),
+                            alert.get('html_url', "N/A")
+                        ])
                 except Exception as e:
                     print(f"Error getting alerts for {obj_type[:-1]}: {obj_name} - {e}")
-
     return secretscan_alerts
 
 def dependabot_scanning_alerts(api_url, api_key, project_data):
@@ -290,7 +261,6 @@ def dependabot_scanning_alerts(api_url, api_key, project_data):
                         ])
                 except Exception as e:
                     print(f"Error getting alerts for {obj_type[:-1]}: {obj_name} - {e}")
-    
     return dependabot_alerts
 
 def main():
@@ -322,12 +292,12 @@ def main():
     for project_name, project_data in config.get('projects').items():
         if project_name != "":
             write_alert_count_csv(alert_count(api_url, api_key, project_data), project_name)
+   '''
     
     # Get Code scan findings for each organization and write them to a CSV file
     for project_name, project_data in config.get('projects').items():
         if project_name != "":
             write_codeql_alerts_csv(code_scanning_alerts(api_url, api_key, project_data), project_name)
-   '''
     
     # Get Secret scan findings for each organization and write them to a CSV file
     for project_name, project_data in config.get('projects').items():
