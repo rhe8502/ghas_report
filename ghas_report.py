@@ -158,12 +158,11 @@ def write_dependabot_alerts_csv(dependabot_alerts, project_name):
         print("Error: I/O error")
         exit(1)
 
-
 # Process alert counts for each organization and repository and add them to a list
 def alert_count(api_url, api_key, project_data):
     alert_count = []
 
-    for obj_type in ["organizations", "repositories"]:
+    for obj_type in ['organizations', 'repositories']:
         for obj_name in project_data.get(obj_type, []):
             if obj_name:
                 try:
@@ -284,7 +283,7 @@ def main():
     for project_name, project_data in config.get('projects').items():
         if project_name != "":
             write_alert_count_csv(alert_count(api_url, api_key, project_data), project_name)
-    
+    '''
     # Get Code scan findings for each organization and write them to a CSV file
     for project_name, project_data in config.get('projects').items():
         if project_name != "":
@@ -300,6 +299,7 @@ def main():
     for project_name, project_data in config.get('projects').items():
         if project_name != "":
             write_dependabot_alerts_csv(dependabot_scanning_alerts(api_url, api_key, project_data), project_name)
+    '''
             
 if __name__ == '__main__':
     main()
