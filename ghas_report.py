@@ -6,29 +6,27 @@ import json
 from datetime import datetime
 
 # Handle API error responses
-def api_error_response(response, org_name):
-    data = response.json()
-    if response.status_code == 400:
-        print(f"Error: GitHub API version \"{headers.get('X-GitHub-Api-Version')}\" not supported, check your API version in the config.json file.")
-        exit(1)
-    if response.status_code == 401:
-        print("Error: Authentication failed. Please check your API key.")
-        exit(1)
-    elif response.status_code == 503:
-        print("Error: GitHub API is currently unavailable. Please try again later.")
-        exit(1)
-    elif response.status_code == 403:
-        return(f"Error: Access to organization {org_name} is forbidden. Please check your API key permissions.")
-    elif response.status_code == 404:
-        if "message" in data:
-           return(f"Error: {data['message']}") 
+def api_error_response(response, repo_name, org_name):
+    error_messages = {
+        304: f"Error {response.status_code}: {response.json().get('message', 'Not modified')}, Errors: {response.json().get('errors', '')}",
+        400: f"Error {response.status_code}: {response.json().get('message', 'Bad Request')}, Errors: {response.json().get('errors', '')}",
+        403: f"Error {response.status_code}: {response.json().get('message', 'GitHub Advanced Security is not enabled for this repository')}, Errors: {response.json().get('errors', '')}",
+        404: f"Error {response.status_code}: {response.json().get('message', 'Resource not found')}, Errors: {response.json().get('errors', '')}",
+        422: f"Error {response.status_code}: {response.json().get('message', 'Validation failed, or the endpoint has been spammed')}, Errors: {response.json().get('errors', '')}",
+        503: f"Error {response.status_code}: {response.json().get('message', 'Service unavailable')}, Errors: {response.json().get('errors', '')}",
+    }
+
+    if response.status_code in error_messages:
+        error_message = error_messages[response.status_code]
+        if callable(error_message):
+            return error_message(response, repo_name, org_name)
         else:
-            return(f"Error: {org_name} not found.")
+            raise Exception(error_message)
     else:
-        return(f"Error getting alerts for {org_name}: {response.status_code}")  
+        raise Exception(f"Error getting alerts for {org_name}: {response.status_code}")
 
 # Get Code Scanning alerts and alert count
-def get_code_scanning_alerts(api_url, api_key, org_name=None, owner=None, repo_name=None):
+def get_code_scanning_alerts(api_url, org_name=None, owner=None, repo_name=None):
     if repo_name:
         url = f"{api_url}/repos/{owner}/{repo_name}/code-scanning/alerts?state=open"
     elif org_name:
@@ -40,14 +38,12 @@ def get_code_scanning_alerts(api_url, api_key, org_name=None, owner=None, repo_n
         code_scanning_alerts = response.json()
         code_scanning_alert_count = len(code_scanning_alerts)
     else:
-        error_msg = api_error_response(response, org_name)
-        if error_msg is not None:
-            print(error_msg)
-            return         
+        print(api_error_response(response, org_name, repo_name))
+
     return code_scanning_alerts, code_scanning_alert_count
 
 # Get Secret Scanning alerts and alert count
-def get_secret_scanning_alerts(api_url, api_key, org_name=None, owner=None, repo_name=None):
+def get_secret_scanning_alerts(api_url, org_name=None, owner=None, repo_name=None):
     if repo_name:       
         url = f"{api_url}/repos/{owner}/{repo_name}/secret-scanning/alerts?state=open"
     elif org_name:
@@ -59,14 +55,11 @@ def get_secret_scanning_alerts(api_url, api_key, org_name=None, owner=None, repo
         secret_scanning_alerts = response.json()
         secret_scanning_alert_count = len(secret_scanning_alerts)
     else:
-        error_msg = api_error_response(response, org_name)
-        if error_msg is not None:
-            print(error_msg)
-            return
+        print(api_error_response(response, org_name, repo_name))
     return secret_scanning_alerts, secret_scanning_alert_count
 
 # Get Dependabot alerts and alert count
-def get_dependabot_alerts(api_url, api_key, org_name=None, owner=None, repo_name=None):
+def get_dependabot_alerts(api_url, org_name=None, owner=None, repo_name=None):
     if repo_name:
         url = f"{api_url}/repos/{owner}/{repo_name}/dependabot/alerts?state=open"
     elif org_name:
@@ -78,10 +71,7 @@ def get_dependabot_alerts(api_url, api_key, org_name=None, owner=None, repo_name
         dependabot_alerts = response.json()
         dependabot_alert_count = len(dependabot_alerts)  # get the total number of open Dependabot alerts
     else:
-        error_msg = api_error_response(response, org_name)
-        if error_msg is not None:
-            print(error_msg)
-            return
+        print(api_error_response(response, org_name, repo_name))
     return dependabot_alerts, dependabot_alert_count
 
 # Write alert count to a CSV file
@@ -156,7 +146,7 @@ def write_dependabot_alerts_csv(dependabot_alerts, project_name):
         exit(1)
 
 # Process alert counts for each organization and repository and add them to a list
-def alert_count(api_url, api_key, project_data):
+def alert_count(api_url, project_data):
     alert_count = []
 
     for obj_type in ['organizations', 'repositories']:
@@ -164,17 +154,17 @@ def alert_count(api_url, api_key, project_data):
             if obj_name:
                 try:
                     if obj_type == 'organizations':
-                        alert_count.append([obj_name, "N/A", get_code_scanning_alerts(api_url, api_key, org_name=obj_name)[1], get_secret_scanning_alerts(api_url, api_key, org_name=obj_name)[1], get_dependabot_alerts(api_url, api_key, org_name=obj_name)[1]])
+                        alert_count.append([obj_name, "N/A", get_code_scanning_alerts(api_url, org_name=obj_name)[1], get_secret_scanning_alerts(api_url, org_name=obj_name)[1], get_dependabot_alerts(api_url, org_name=obj_name)[1]])
                     elif obj_type == 'repositories':
                         owner = project_data.get('owner')
-                        alert_count.append(["N/A", obj_name, get_code_scanning_alerts(api_url, api_key, owner=owner, repo_name=obj_name)[1], get_secret_scanning_alerts(api_url, api_key, owner=owner, repo_name=obj_name)[1], get_dependabot_alerts(api_url, api_key, owner=owner, repo_name=obj_name)[1]])
+                        alert_count.append(["N/A", obj_name, get_code_scanning_alerts(api_url, owner=owner, repo_name=obj_name)[1], get_secret_scanning_alerts(api_url, owner=owner, repo_name=obj_name)[1], get_dependabot_alerts(api_url, owner=owner, repo_name=obj_name)[1]])
                 except Exception as e:
-                    print(f"Error getting alert count for {obj_type[:-1]}: {obj_name} - {e}")
+                    print(f"Error getting alert count for {'repository' if obj_type == 'repositories' else 'organization'}: {obj_name} - {e}")
     return alert_count
 
 
 # Process code scan alerts for each organization and repository and add them to a list
-def code_scanning_alerts(api_url, api_key, project_data):
+def code_scanning_alerts(api_url, project_data):
     codeql_alerts = []
 
     for obj_type in ['organizations', 'repositories']:
@@ -182,7 +172,7 @@ def code_scanning_alerts(api_url, api_key, project_data):
             if obj_name:
                 try:
                     owner = project_data.get('owner') if obj_type == 'repositories' else None
-                    alerts = get_code_scanning_alerts(api_url, api_key, owner=owner, org_name=obj_name if obj_type == 'organizations' else None, repo_name=obj_name if obj_type == 'repositories' else None)[0]
+                    alerts = get_code_scanning_alerts(api_url, owner=owner, org_name=obj_name if obj_type == 'organizations' else None, repo_name=obj_name if obj_type == 'repositories' else None)[0]
                     for alert in alerts:
                         codeql_alerts.append([
                             obj_name if obj_type == 'organizations' else alert.get('organization', {}).get('name', "N/A"),
@@ -197,11 +187,11 @@ def code_scanning_alerts(api_url, api_key, project_data):
                             alert.get('html_url', "N/A")
                         ])
                 except Exception as e:
-                    print(f"Error getting alerts for {obj_type[:-1]}: {obj_name} - {e}")
+                    print(f"Error getting CodeQL alerts for {'repository' if obj_type == 'repositories' else 'organization'}: {obj_name} - {e}")
     return codeql_alerts
 
 # Process Secret Scanning alerts for each organization and repository and add them to a list
-def secret_scanning_alerts(api_url, api_key, project_data):
+def secret_scanning_alerts(api_url, project_data):
     secretscan_alerts = []
 
     for obj_type in ['organizations', 'repositories']:
@@ -209,7 +199,7 @@ def secret_scanning_alerts(api_url, api_key, project_data):
             if obj_name:
                 try:
                     owner = project_data.get('owner') if obj_type == 'repositories' else None
-                    alerts = get_secret_scanning_alerts(api_url, api_key, owner=owner, org_name=obj_name if obj_type == 'organizations' else None, repo_name=obj_name if obj_type == 'repositories' else None)[0]
+                    alerts = get_secret_scanning_alerts(api_url, owner=owner, org_name=obj_name if obj_type == 'organizations' else None, repo_name=obj_name if obj_type == 'repositories' else None)[0]
                     for alert in alerts:
                         secretscan_alerts.append([
                             obj_name if obj_type == 'organizations' else alert.get('organization', {}).get('name', "N/A"),
@@ -222,11 +212,11 @@ def secret_scanning_alerts(api_url, api_key, project_data):
                             alert.get('html_url', "N/A")
                         ])
                 except Exception as e:
-                    print(f"Error getting alerts for {obj_type[:-1]}: {obj_name} - {e}")
+                    print(f"Error getting secret scanning alerts for {'repository' if obj_type == 'repositories' else 'organization'}: {obj_name} - {e}")
     return secretscan_alerts
 
 # Process Dependabot alerts for each organization and repository and add them to a list
-def dependabot_scanning_alerts(api_url, api_key, project_data):
+def dependabot_scanning_alerts(api_url, project_data):
     dependabot_alerts = []
 
     for obj_type in ['organizations', 'repositories']:
@@ -234,7 +224,7 @@ def dependabot_scanning_alerts(api_url, api_key, project_data):
             if obj_name:
                 try:
                     owner = project_data.get('owner') if obj_type == 'repositories' else None
-                    alerts = get_dependabot_alerts(api_url, api_key, owner=owner, org_name=obj_name if obj_type == 'organizations' else None, repo_name=obj_name if obj_type == 'repositories' else None)[0]
+                    alerts = get_dependabot_alerts(api_url, owner=owner, org_name=obj_name if obj_type == 'organizations' else None, repo_name=obj_name if obj_type == 'repositories' else None)[0]
                     for alert in alerts:
                         dependabot_alerts.append([
                             obj_name if obj_type == 'organizations' else alert.get('organization', {}).get('name', "N/A"),
@@ -250,7 +240,7 @@ def dependabot_scanning_alerts(api_url, api_key, project_data):
                             alert.get('html_url', "N/A")
                         ])
                 except Exception as e:
-                    print(f"Error getting alerts for {obj_type[:-1]}: {obj_name} - {e}")
+                    print(f"Error getting dependabot alerts for {'repository' if obj_type == 'repositories' else 'organization'}: {obj_name} - {e}")
     return dependabot_alerts
 
 def main():
@@ -280,22 +270,22 @@ def main():
     # Get Alert count for each project and write them to a CSV file
     for project_name, project_data in config.get('projects').items():
         if project_name:
-            write_alert_count_csv(alert_count(api_url, api_key, project_data), project_name)
+            write_alert_count_csv(alert_count(api_url, project_data), project_name)
 
     # Get Code scan findings for each organization and write them to a CSV file
     for project_name, project_data in config.get('projects').items():
         if project_name:
-            write_codeql_alerts_csv(code_scanning_alerts(api_url, api_key, project_data), project_name)
+            write_codeql_alerts_csv(code_scanning_alerts(api_url, project_data), project_name)
     
     # Get Secret scan findings for each organization and write them to a CSV file
     for project_name, project_data in config.get('projects').items():
         if project_name:
-            write_secretscan_alerts_csv(secret_scanning_alerts(api_url, api_key, project_data), project_name)
+            write_secretscan_alerts_csv(secret_scanning_alerts(api_url, project_data), project_name)
    
     # Get Dependabot scan findings for each organization and write them to a CSV file
     for project_name, project_data in config.get('projects').items():
         if project_name:
-            write_dependabot_alerts_csv(dependabot_scanning_alerts(api_url, api_key, project_data), project_name)
+            write_dependabot_alerts_csv(dependabot_scanning_alerts(api_url, project_data), project_name)
             
 if __name__ == '__main__':
     main()
