@@ -164,14 +164,16 @@ def alert_count(api_url, api_key, project_data):
 
     for obj_type in ['organizations', 'repositories']:
         for obj_name in project_data.get(obj_type, []):
-            if obj_name:
+            if obj_name is not None:
                 try:
                     if obj_type == 'organizations':
-                        alert_count.append([obj_name, "N/A", get_code_scanning_alerts(api_url, api_key, org_name=obj_name)[1], get_secret_scanning_alerts(api_url, api_key, org_name=obj_name)[1], get_dependabot_alerts(api_url, api_key, org_name=obj_name)[1]])
+                        print(obj_name)
+                        # alert_count.append([obj_name, "N/A", get_code_scanning_alerts(api_url, api_key, org_name=obj_name)[1], get_secret_scanning_alerts(api_url, api_key, org_name=obj_name)[1], get_dependabot_alerts(api_url, api_key, org_name=obj_name)[1]])
                     elif obj_type == 'repositories':
+                        print(obj_name)
                         alert_count.append(["N/A", obj_name, get_code_scanning_alerts(api_url, api_key, repo_name=obj_name)[1], get_secret_scanning_alerts(api_url, api_key, repo_name=obj_name)[1], get_dependabot_alerts(api_url, api_key, repo_name=obj_name)[1]])
                 except Exception as e:
-                    print(f"Error getting alert count for {obj_type[:1]}: {obj_name} - {e}")
+                    print(f"Error getting alert count for {obj_name} - {e}")
 
     return alert_count
 
