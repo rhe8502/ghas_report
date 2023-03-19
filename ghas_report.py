@@ -269,24 +269,20 @@ def main():
     }
 
     # Get Alert count for each project and write them to a CSV file
-    for project_name, project_data in config.get('projects').items():
-        if project_name:
-            write_alert_count_csv(alert_count(api_url, project_data), project_name)
+    for project_name, project_data in config.get('projects', {}).items():
+        write_alert_count_csv(alert_count(api_url, project_data), project_name)
 
     # Get Code scan findings for each organization and write them to a CSV file
-    for project_name, project_data in config.get('projects').items():
-        if project_name:
-            write_codeql_alerts_csv(code_scanning_alerts(api_url, project_data), project_name)
+    for project_name, project_data in config.get('projects', {}).items():
+        write_codeql_alerts_csv(code_scanning_alerts(api_url, project_data), project_name)
     
     # Get Secret scan findings for each organization and write them to a CSV file
-    for project_name, project_data in config.get('projects').items():
-        if project_name:
-            write_secretscan_alerts_csv(secret_scanning_alerts(api_url, project_data), project_name)
+    for project_name, project_data in config.get('projects', {}).items():
+        write_secretscan_alerts_csv(secret_scanning_alerts(api_url, project_data), project_name)
    
     # Get Dependabot scan findings for each organization and write them to a CSV file
-    for project_name, project_data in config.get('projects').items():
-        if project_name:
-            write_dependabot_alerts_csv(dependabot_scanning_alerts(api_url, project_data), project_name)
+    for project_name, project_data in config.get('projects', {}).items():
+        write_dependabot_alerts_csv(dependabot_scanning_alerts(api_url, project_data), project_name)
             
 if __name__ == '__main__':
     main()
