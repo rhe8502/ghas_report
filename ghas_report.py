@@ -23,9 +23,11 @@
 GitHub Advanced Security (GHAS) Vulnerability Report
 """
 
-import requests
+import argparse
 import csv
 import json
+import requests
+import sys
 from datetime import datetime
 
 # Handle API error responses
@@ -286,6 +288,31 @@ def main():
         "X-GitHub-Api-Version": f"{api_version}"
     }
 
+    parser = argparse.ArgumentParser(description='''This script will get various types of alerts for each organization and repository in the config.json file and write them to a CSV file.''')
+    parser.add_argument('-a', action='store_true', help='Get all types of alerts for each project (organizations and repositories)')
+    parser.add_argument('-n', action='store_true', help='Get alert count for each project (organizations and repositories)')
+    parser.add_argument('-c', action='store_true', help='Get code scanning findings for each project (organizations and repositories)')
+    parser.add_argument('-s', action='store_true', help='Get secret scanning findings for each project (organizations and repositories)')
+    parser.add_argument('-d', action='store_true', help='Get Dependabot scanning findings for each project (organizations and repositories)')
+    args = parser.parse_args()
+
+    # Define the list of alert types to process. If the -a flag is present, include all alert types. Otherwise, include only the alert types that were passed as arguments
+    alert_types = ['n', 'c', 's', 'd'] if args.a else [t for t in ['n', 'c', 's', 'd'] if getattr(args, t)]
+
+    if not alert_types:
+        print('Error: No alert type specified.')
+    else:
+        # Process each project for the selected alert types
+        for project_name, project_data in config.get('projects', {}).items():
+            for alert_type in alert_types:
+                {
+                    'n': lambda: write_alert_count_csv(alert_count(api_url, project_data), project_name),
+                    'c': lambda: write_codescan_alerts_csv(code_scanning_alerts(api_url, project_data), project_name),
+                    's': lambda: write_secretscan_alerts_csv(secret_scanning_alerts(api_url, project_data), project_name),
+                    'd': lambda: write_dependabot_alerts_csv(dependabot_scanning_alerts(api_url, project_data), project_name),
+                }[alert_type]()
+
+    ''''
     # Get Alert count for each project and write them to a CSV file
     for project_name, project_data in config.get('projects', {}).items():
         write_alert_count_csv(alert_count(api_url, project_data), project_name)
@@ -301,6 +328,7 @@ def main():
     # Get Dependabot scan findings for each organization and write them to a CSV file
     for project_name, project_data in config.get('projects', {}).items():
         write_dependabot_alerts_csv(dependabot_scanning_alerts(api_url, project_data), project_name)
+    '''
             
 if __name__ == '__main__':
     main()
