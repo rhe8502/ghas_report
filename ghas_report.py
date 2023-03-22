@@ -45,7 +45,7 @@ def api_error_response(response):
         error_message = error_messages[response.status_code]
         raise Exception(error_message)
     else:
-        raise Exception(f"Errror {response.status_code}: {response.json().get('message', '')}" + (f", Errors: {response.json().get('errors', '')}" if response.json().get('errors') else ''))
+        raise Exception(f"Error {response.status_code}: {response.json().get('message', '')}" + (f", Errors: {response.json().get('errors', '')}" if response.json().get('errors') else ''))
 
 # Get Code Scanning alerts and alert count
 def get_code_scanning_alerts(api_url, org_name=None, owner=None, repo_name=None):
@@ -265,15 +265,15 @@ def dependabot_scanning_alerts(api_url, project_data):
     return dependabot_alerts
 
 def main():
-    # Load configuration from config.json file
+    # Load configuration from ghas_config.json file
     try:
-        with open('config.json', 'r') as config_file:
+        with open('ghas_config.json', 'r') as config_file:
             config = json.load(config_file)
     except FileNotFoundError:
-        print('Error: config.json file not found')
+        print('Error: ghas_config.json file not found')
         exit(1)
     except json.JSONDecodeError:
-        print('Error: config.json file is not valid JSON')
+        print('Error: ghas_config.json file is not valid JSON')
         exit(1)
 
     # Get API URL and API key from config    
@@ -287,15 +287,89 @@ def main():
         "Authorization": f"token {api_key}",
         "X-GitHub-Api-Version": f"{api_version}"
     }
+    
+    parser = argparse.ArgumentParser(description='''
+The script is designed to retrieve various types of GitHub Advanced Security (GHAS) alerts for a specified organization or repository. GHAS alerts can include code scanning alerts, secret scanning alerts, and Dependabot alerts.
 
-    parser = argparse.ArgumentParser(description='''This script will get various types of alerts for each organization and repository in the config.json file and write them to a CSV file.''')
-    parser.add_argument('-a', action='store_true', help='Get all types of alerts for each project (organizations and repositories)')
-    parser.add_argument('-n', action='store_true', help='Get alert count for each project (organizations and repositories)')
-    parser.add_argument('-c', action='store_true', help='Get code scanning findings for each project (organizations and repositories)')
-    parser.add_argument('-s', action='store_true', help='Get secret scanning findings for each project (organizations and repositories)')
-    parser.add_argument('-d', action='store_true', help='Get Dependabot scanning findings for each project (organizations and repositories)')
+It will generate a report based on the specified options and write the results to a file. The output format of the report can also be specified using command-line options. The supported formats are CSV, PDF, HTML, and JSON. By default, the output is written to a CSV file. If the -oA option is specified, then the report will be written to all supported formats.
+    ''', formatter_class=argparse.RawTextHelpFormatter)
+
+    #Options group
+    parser.add_argument('-V', '--version', action='version', version='%(prog)s 0.1', help='show program\'s version number and exit')
+
+    # Alert reports
+    alert_group = parser.add_argument_group('Generate alert reports')
+    alert_group.add_argument('-A', '--all', action='store_true', help='generate Alert Count, Code Scanning, Secret Scanning, and Dependabot alert reports')
+    alert_group.add_argument('-a', '--alerts', action='store_true', help='generate Alert Count report of all open alerts')
+    alert_group.add_argument('-c', '--codescan', action='store_true', help='generate Code Scan alert report')
+    alert_group.add_argument('-s', '--secretscan', action='store_true', help='generate Secret Scanning alert report')
+    alert_group.add_argument('-d', '--dependabot', action='store_true', help='generate Dependabot alert report')
+
+    # Optional alert reports arguments
+    alert_options_group = parser.add_argument_group('Optional alert report arguments')
+    alert_options_group.add_argument('-v', '--verbose', action='store_true', help='write all information to the output file (only applicable for CSV files)')
+    alert_options_group.add_argument('-o', '--open', action='store_true', help='only generate reports for open alerts (Alert Count only reports open alerts by default)')
+    alert_options_group.add_argument('-g', '--org', metavar='ORG', help='specify the organization to generate a report for')
+    alert_options_group.add_argument('-r', '--repo', metavar='REPO', help='specify the repository to generate a report for')
+
+    # Optional arguments
+    optional_group = parser.add_argument_group('Optional arguments')
+   
+    # Output file format arguments
+    output_group = parser.add_argument_group('Output file format arguments')
+    output_group.add_argument('-wC', '--output-csv', action='store_true', help='write output to a CSV file (default format)')
+    output_group.add_argument('-wP', '--output-pdf', action='store_true', help='write output to a PDF file')
+    output_group.add_argument('-wH', '--output-html', action='store_true', help='write output to a HTML file')
+    output_group.add_argument('-wJ', '--output-json', action='store_true', help='write output to a JSON file')
+    output_group.add_argument('-wA', '--output-all', action='store_true', help='write output to all formats at once')
+
+    # Optional file arguments
+    optional_file_group = parser.add_argument_group('Optional file arguments')
+    optional_file_group.add_argument('-D', '--dir', metavar='DIR', help='specify the directory to write the output to. If none specified, the current directory is used.')
+    optional_file_group.add_argument('-C', '--config', metavar='CON', default='ghas_config.json', help='specify a config file to use. If none specified "ghas_config.json" is used. If ghas_config.json is not found in the current directory, a new config file will be created.\n\n')
+
+    # Parse the arguments
     args = parser.parse_args()
 
+    # Define the list of alert types to process. If the -A flag is present, include all alert types. Otherwise, include only the alert types that were passed as arguments
+    alert_types = ['alerts', 'codescan', 'secretscan', 'dependabot'] if args.all else [t for t in ['alerts', 'codescan', 'secretscan', 'dependabot'] if getattr(args, t)]
+
+    if not alert_types:
+        print('\nError: No alert type specified.\n')
+        parser.print_help()
+
+    else:
+        # Process each project for the selected alert types
+        for project_name, project_data in config.get('projects', {}).items():
+            for alert_type in alert_types:
+                {
+                    'alerts': lambda: write_alert_count_csv(alert_count(api_url, project_data), project_name),
+                    'codescan': lambda: write_codescan_alerts_csv(code_scanning_alerts(api_url, project_data), project_name),
+                    'secretscan': lambda: write_secretscan_alerts_csv(secret_scanning_alerts(api_url, project_data), project_name),
+                    'dependabot': lambda: write_dependabot_alerts_csv(dependabot_scanning_alerts(api_url, project_data), project_name),
+                }[alert_type]()
+
+    '''
+
+    # if not vars(args):
+    #    parser.print_help()
+
+    if args.all:
+        print('Generate Alert Count, Code Scanning, Secret Scanning and Dependabot alert reports')
+    elif args.alerts:
+        print('Generate alert count report of all open alerts')
+    elif args.codescan:
+        print('Generate Code Scan alert report')
+    elif args.secretscan:
+        print('Generate Secret Scanning alert report')
+    elif args.dependabot:
+        print('Generate Dependabot alert report')
+    else:
+        print('No argument given')    
+    '''
+
+
+    '''
     # Define the list of alert types to process. If the -a flag is present, include all alert types. Otherwise, include only the alert types that were passed as arguments
     alert_types = ['n', 'c', 's', 'd'] if args.a else [t for t in ['n', 'c', 's', 'd'] if getattr(args, t)]
 
@@ -312,7 +386,6 @@ def main():
                     'd': lambda: write_dependabot_alerts_csv(dependabot_scanning_alerts(api_url, project_data), project_name),
                 }[alert_type]()
 
-    ''''
     # Get Alert count for each project and write them to a CSV file
     for project_name, project_data in config.get('projects', {}).items():
         write_alert_count_csv(alert_count(api_url, project_data), project_name)
