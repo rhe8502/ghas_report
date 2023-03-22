@@ -1,5 +1,6 @@
 .venv
-config.json
+ghas_config.json
 *.csv
 *.json
 print_config.py
+usage-ghas_report.md
