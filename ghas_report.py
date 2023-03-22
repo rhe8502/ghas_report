@@ -350,42 +350,6 @@ It will generate a report based on the specified options and write the results t
                 }[alert_type]()
 
     '''
-
-    # if not vars(args):
-    #    parser.print_help()
-
-    if args.all:
-        print('Generate Alert Count, Code Scanning, Secret Scanning and Dependabot alert reports')
-    elif args.alerts:
-        print('Generate alert count report of all open alerts')
-    elif args.codescan:
-        print('Generate Code Scan alert report')
-    elif args.secretscan:
-        print('Generate Secret Scanning alert report')
-    elif args.dependabot:
-        print('Generate Dependabot alert report')
-    else:
-        print('No argument given')    
-    '''
-
-
-    '''
-    # Define the list of alert types to process. If the -a flag is present, include all alert types. Otherwise, include only the alert types that were passed as arguments
-    alert_types = ['n', 'c', 's', 'd'] if args.a else [t for t in ['n', 'c', 's', 'd'] if getattr(args, t)]
-
-    if not alert_types:
-        print('Error: No alert type specified.')
-    else:
-        # Process each project for the selected alert types
-        for project_name, project_data in config.get('projects', {}).items():
-            for alert_type in alert_types:
-                {
-                    'n': lambda: write_alert_count_csv(alert_count(api_url, project_data), project_name),
-                    'c': lambda: write_codescan_alerts_csv(code_scanning_alerts(api_url, project_data), project_name),
-                    's': lambda: write_secretscan_alerts_csv(secret_scanning_alerts(api_url, project_data), project_name),
-                    'd': lambda: write_dependabot_alerts_csv(dependabot_scanning_alerts(api_url, project_data), project_name),
-                }[alert_type]()
-
     # Get Alert count for each project and write them to a CSV file
     for project_name, project_data in config.get('projects', {}).items():
         write_alert_count_csv(alert_count(api_url, project_data), project_name)
