@@ -323,6 +323,10 @@ It will generate a report based on the specified options and write the results t
     output_group.add_argument('-wJ', '--output-json', action='store_true', help='write output to a JSON file')
     output_group.add_argument('-wA', '--output-all', action='store_true', help='write output to all formats at once')
 
+    # Report type
+    report_group = parser.add_argument_group('Report type (only applicable for PDF and HTML output formats)')
+    report_group.add_argument('-Ro', '--report-owasp', action='store_true', help=' OWASP Top 10 - 2021')
+
     # Optional file arguments
     optional_file_group = parser.add_argument_group('Optional file arguments')
     optional_file_group.add_argument('-D', '--dir', metavar='DIR', help='specify the directory to write the output to. If none specified, the current directory is used.')
