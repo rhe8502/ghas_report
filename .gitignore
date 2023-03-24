@@ -4,3 +4,4 @@ ghas_config.json
 *.json
 print_config.py
 usage-ghas_report.md
+config
