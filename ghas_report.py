@@ -112,7 +112,7 @@ def write_alerts(alert_data, project_name, output_type=None, calling_function=No
         'alert_count': ['Organization', 'Repository', 'Code Scanning Alerts', 'Secret Scanning Alerts', 'Dependabot Alerts'],
         'code_scan': ['#', 'Organization', 'Repository', 'Date Created', 'Date Updated', 'Severity', 'State', 'Fixed At', 'Rule ID', 'Description', 'Category', 'File', 'Dismissed At', 'Dismissed By', 'Dismissed Reason', 'Dismissed Comment', 'Tool', 'GitHub URL'],
         'secret_scan': ['#', 'Organization', 'Repository', 'Date Created', 'Date Updated',  'State', 'Secret Type Name', 'Secret Type', 'GitHub URL'],
-        'dependabot_scan': ['#', 'Organization', 'Repository', 'Date Created', 'Date Updated',  'State', 'Severity', 'Package Name', 'CVE ID', 'Summary', 'Scope', 'Manifest ID', 'GitHub URL']
+        'dependabot_scan': ['#', 'Organization', 'Repository', 'Date Created', 'Date Updated', 'Severity', 'State', 'Fixed At', 'Package Name', 'CVE ID', 'Summary', 'Dismissed At', 'Dismissed By', 'Dismissed Reason', 'Dismissed Comment', 'Scope', 'Manifest ID', 'GitHub URL']
     }
 
     try:
@@ -238,11 +238,16 @@ def dependabot_scanning_alerts(api_url, project_data):
                             gh_name if gh_entity == 'repositories' else alert.get('repository', {}).get('name', "N/A"),
                             datetime.strptime(get_attr(alert, ['created_at']), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d") if get_attr(alert, ['created_at']) != "" else "",
                             datetime.strptime(get_attr(alert, ['updated_at']), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d") if get_attr(alert, ['updated_at']) != "" else "",
-                            get_attr(alert, ['state'], ""),
                             get_attr(alert, ['security_advisory', 'severity'], ""),
+                            get_attr(alert, ['state'], ""),
+                            datetime.strptime(get_attr(alert, ['fixed_at']), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d") if get_attr(alert, ['fixed_at']) != "" else "",
                             get_attr(alert, ['dependency', 'package', 'name'], ""),
                             get_attr(alert, ['security_advisory', 'cve_id'], ""),
                             get_attr(alert, ['security_advisory', 'summary'], ""),
+                            datetime.strptime(get_attr(alert, ['dismissed_at']), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d") if get_attr(alert, ['dismissed_at']) != "" else "",
+                            get_attr(alert, ['dismissed_by', 'login'], ""),
+                            get_attr(alert, ['dismissed_reason'], " "),
+                            get_attr(alert, ['dismissed_comment'], " "),
                             get_attr(alert, ['dependency', 'scope'], ""),
                             get_attr(alert, ['dependency', 'manifest_path'], ""),
                             get_attr(alert, ['html_url'], "")
