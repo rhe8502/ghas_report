@@ -110,9 +110,9 @@ def write_alerts(alert_data, project_name, output_type=None, calling_function=No
 
     scan_options = {
         'alert_count': ['Organization', 'Repository', 'Code Scanning Alerts', 'Secret Scanning Alerts', 'Dependabot Alerts'],
-        'code_scan': ['#', 'Organization', 'Repository', 'Date Created', 'Date Updated', 'Severity', 'State', 'Fixed At', 'Rule ID', 'Description', 'Category', 'File', 'Dismissed At', 'Dismissed By', 'Dismissed Reason', 'Dismissed Comment', 'Tool', 'GitHub URL'],
-        'secret_scan': ['#', 'Organization', 'Repository', 'Date Created', 'Date Updated',  'State', 'Secret Type Name', 'Secret Type', 'GitHub URL'],
-        'dependabot_scan': ['#', 'Organization', 'Repository', 'Date Created', 'Date Updated', 'Severity', 'State', 'Fixed At', 'Package Name', 'CVE ID', 'Summary', 'Dismissed At', 'Dismissed By', 'Dismissed Reason', 'Dismissed Comment', 'Scope', 'Manifest ID', 'GitHub URL']
+        'code_scan': ['Alert', 'Organization', 'Repository', 'Date Created', 'Date Updated', 'Severity', 'State', 'Fixed At', 'Rule ID', 'Description', 'Category', 'File', 'Dismissed At', 'Dismissed By', 'Dismissed Reason', 'Dismissed Comment', 'Tool', 'GitHub URL'],
+        'secret_scan': ['Alert', 'Organization', 'Repository', 'Date Created', 'Date Updated',  'State', 'Secret Type Name', 'Secret Type', 'GitHub URL'],
+        'dependabot_scan': ['Alert', 'Organization', 'Repository', 'Date Created', 'Date Updated', 'Severity', 'State', 'Fixed At', 'Package Name', 'CVE ID', 'Summary', 'Dismissed At', 'Dismissed By', 'Dismissed Reason', 'Dismissed Comment', 'Scope', 'Manifest ID', 'GitHub URL']
     }
 
     try:
