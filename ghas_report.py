@@ -50,9 +50,12 @@ def api_error_response(response):
 # Get Code Scanning alerts and alert count
 def get_code_scanning_alerts(api_url, org_name=None, owner=None, repo_name=None):
     if repo_name:
-        url = f"{api_url}/repos/{owner}/{repo_name}/code-scanning/alerts?state=open"
+        url = f"{api_url}/repos/{owner}/{repo_name}/code-scanning/alerts"
+        #url = f"{api_url}/repos/{owner}/{repo_name}/code-scanning/alerts?state=open"
     elif org_name:
-        url = f"{api_url}/orgs/{org_name}/code-scanning/alerts?state=open"
+        #url = f"{api_url}/orgs/{org_name}/code-scanning/alerts?state=open"
+        url = f"{api_url}/orgs/{org_name}/code-scanning/alerts"
+
    
     response = requests.get(url, headers=headers)
 
@@ -66,9 +69,11 @@ def get_code_scanning_alerts(api_url, org_name=None, owner=None, repo_name=None)
 # Get Secret Scanning alerts and alert count
 def get_secret_scanning_alerts(api_url, org_name=None, owner=None, repo_name=None):
     if repo_name:       
-        url = f"{api_url}/repos/{owner}/{repo_name}/secret-scanning/alerts?state=open"
+        # url = f"{api_url}/repos/{owner}/{repo_name}/secret-scanning/alerts?state=open"
+        url = f"{api_url}/repos/{owner}/{repo_name}/secret-scanning/alerts"
     elif org_name:
-        url = f"{api_url}/orgs/{org_name}/secret-scanning/alerts?state=open"
+        # url = f"{api_url}/orgs/{org_name}/secret-scanning/alerts?state=open"
+        url = f"{api_url}/orgs/{org_name}/secret-scanning/alerts"
     
     response = requests.get(url, headers=headers)
 
@@ -82,9 +87,11 @@ def get_secret_scanning_alerts(api_url, org_name=None, owner=None, repo_name=Non
 # Get Dependabot alerts and alert count
 def get_dependabot_alerts(api_url, org_name=None, owner=None, repo_name=None):
     if repo_name:
-        url = f"{api_url}/repos/{owner}/{repo_name}/dependabot/alerts?state=open"
+        # url = f"{api_url}/repos/{owner}/{repo_name}/dependabot/alerts?state=open"
+        url = f"{api_url}/repos/{owner}/{repo_name}/dependabot/alerts"
     elif org_name:
-        url = f"{api_url}/orgs/{org_name}/dependabot/alerts?state=open"
+        # url = f"{api_url}/orgs/{org_name}/dependabot/alerts?state=open"
+        url = f"{api_url}/orgs/{org_name}/dependabot/alerts"
 
     response = requests.get(url, headers=headers)
 
@@ -103,9 +110,9 @@ def write_alerts(alert_data, project_name, output_type=None, calling_function=No
 
     scan_options = {
         'alert_count': ['Organization', 'Repository', 'Code Scanning Alerts', 'Secret Scanning Alerts', 'Dependabot Alerts'],
-        'code_scan': ['Organization', 'Repository', 'Date Created', 'Date Updated', 'Severity', 'Rule ID', 'Description', 'File', 'Category', 'GitHub URL'],
-        'secret_scan': ['Organization', 'Repository', 'Date Created', 'Date Updated', 'Secret Type Name', 'Secret Type', 'GitHub URL'],
-        'dependabot_scan': ['Organization', 'Repository', 'Date Created', 'Date Updated', 'Severity', 'Package Name', 'CVE ID', 'Summary', 'Scope', 'Manifest ID', 'GitHub URL']
+        'code_scan': ['#', 'Organization', 'Repository', 'Date Created', 'Date Updated', 'Severity', 'State', 'Fixed At', 'Rule ID', 'Description', 'Category', 'File', 'Dismissed At', 'Dismissed By', 'Dismissed Reason', 'Dismissed Comment', 'Tool', 'GitHub URL'],
+        'secret_scan': ['#', 'Organization', 'Repository', 'Date Created', 'Date Updated',  'State', 'Secret Type Name', 'Secret Type', 'GitHub URL'],
+        'dependabot_scan': ['#', 'Organization', 'Repository', 'Date Created', 'Date Updated',  'State', 'Severity', 'Package Name', 'CVE ID', 'Summary', 'Scope', 'Manifest ID', 'GitHub URL']
     }
 
     try:
@@ -126,7 +133,6 @@ def write_alerts(alert_data, project_name, output_type=None, calling_function=No
 # Process alert counts for each organization and repository and add them to a list
 def alert_count(api_url, project_data):
     alert_count = []
-
     for gh_entity in ['organizations', 'repositories']:
         for gh_name in project_data.get(gh_entity, []):
             if gh_name:
@@ -140,11 +146,20 @@ def alert_count(api_url, project_data):
                     print(f"Error getting alert count for {'repository' if gh_entity == 'repositories' else 'organization'}: {gh_name} - {e}")
     return {"raw_alerts": alert_count, "scan_alerts": alert_count}
 
+# Helper function to avoid nonetype errors
+def get_attr(alert, keys, default=""):
+    result = alert
+    for key in keys:
+        if result:
+            result = result.get(key)
+        else:
+            break
+    return default if result is None else result
+
 # Process code scanning alerts for each organization and repository and add them to a list
 def code_scanning_alerts(api_url, project_data):
     raw_alerts = []
     scan_alerts = []
-
     for gh_entity in ['organizations', 'repositories']:
         for gh_name in project_data.get(gh_entity, []):
             if gh_name:
@@ -154,16 +169,24 @@ def code_scanning_alerts(api_url, project_data):
                     for alert in alerts:
                         raw_alerts.append(alert)
                         scan_alerts.append([
-                            gh_name if gh_entity == 'organizations' else alert.get('organization', {}).get('name', "N/A"),
-                            gh_name if gh_entity == 'repositories' else alert.get('repository', {}).get('name', "N/A"),
-                            datetime.strptime(alert.get('created_at', "N/A"), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d"),
-                            datetime.strptime(alert.get('updated_at', "N/A"), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d"),
-                            alert.get('rule', {}).get('security_severity_level', "N/A"),
-                            alert.get('rule', {}).get('id', "N/A"),
-                            alert.get('most_recent_instance', {}).get('message', {}).get('text', "N/A"),
-                            alert.get('most_recent_instance', {}).get('location', {}).get('path', "N/A"),
-                            alert.get('most_recent_instance', {}).get('category', "N/A"),
-                            alert.get('html_url', "N/A")
+                            get_attr(alert, ['number'], ""),
+                            gh_name if gh_entity == 'organizations' else get_attr(alert, ['organization', 'name'], ""),
+                            gh_name if gh_entity == 'repositories' else get_attr(alert, ['repository', 'name'], ""),
+                            datetime.strptime(get_attr(alert, ['created_at']), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d") if get_attr(alert, ['created_at']) != "" else "",
+                            datetime.strptime(get_attr(alert, ['updated_at']), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d") if get_attr(alert, ['updated_at']) != "" else "",
+                            get_attr(alert, ['rule', 'security_severity_level'], ""),
+                            get_attr(alert, ['state'], ""),
+                            datetime.strptime(get_attr(alert, ['fixed_at']), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d") if get_attr(alert, ['fixed_at']) != "" else "",
+                            get_attr(alert, ['rule', 'id'], ""),
+                            get_attr(alert, ['most_recent_instance', 'message', 'text'], ""),
+                            get_attr(alert, ['most_recent_instance', 'category'], ""),
+                            get_attr(alert, ['most_recent_instance', 'location', 'path'], ""),                            
+                            datetime.strptime(get_attr(alert, ['dismissed_at']), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d") if get_attr(alert, ['dismissed_at']) != "" else "",
+                            get_attr(alert, ['dismissed_by', 'login'], ""),
+                            get_attr(alert, ['dismissed_reason'], " "),
+                            get_attr(alert, ['dismissed_comment'], " "),
+                            get_attr(alert, ['tool', 'name'], "") + ' ' + get_attr(alert, ['tool', 'version'], ""),
+                            get_attr(alert, ['html_url'], "")
                         ])
                 except Exception as e:
                     print(f"Error getting CodeQL alerts for {'repository' if gh_entity == 'repositories' else 'organization'}: {gh_name} - {e}")
@@ -173,7 +196,6 @@ def code_scanning_alerts(api_url, project_data):
 def secret_scanning_alerts(api_url, project_data):
     raw_alerts = []
     scan_alerts = []
-
     for gh_entity in ['organizations', 'repositories']:
         for gh_name in project_data.get(gh_entity, []):
             if gh_name:
@@ -183,14 +205,16 @@ def secret_scanning_alerts(api_url, project_data):
                     for alert in alerts:
                         raw_alerts.append(alert)
                         scan_alerts.append([
+                            get_attr(alert, ['number'], ""),
                             gh_name if gh_entity == 'organizations' else alert.get('organization', {}).get('name', "N/A"),
                             gh_name if gh_entity == 'repositories' else alert.get('repository', {}).get('name', "N/A"),
-                            alert.get('repository', {}).get('name', "N/A"),
-                            datetime.strptime(alert.get('created_at', "N/A"), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d"),
-                            datetime.strptime(alert.get('updated_at', "N/A"), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d"),
-                            alert.get('secret_type_display_name', "N/A"),
-                            alert.get('secret_type', "N/A"),
-                            alert.get('html_url', "N/A")
+                            get_attr(alert, ['repository', 'name'], ""),
+                            datetime.strptime(get_attr(alert, ['created_at']), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d") if get_attr(alert, ['created_at']) != "" else "",
+                            datetime.strptime(get_attr(alert, ['updated_at']), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d") if get_attr(alert, ['updated_at']) != "" else "",
+                            get_attr(alert, ['state'], ""),
+                            get_attr(alert, ['secret_type_display_name'], ""),
+                            get_attr(alert, ['secret_type'], ""),
+                            get_attr(alert, ['html_url'], "")
                         ])
                 except Exception as e:
                     print(f"Error getting secret scanning alerts for {'repository' if gh_entity == 'repositories' else 'organization'}: {gh_name} - {e}")
@@ -200,7 +224,6 @@ def secret_scanning_alerts(api_url, project_data):
 def dependabot_scanning_alerts(api_url, project_data):
     raw_alerts = []
     scan_alerts = []
-
     for gh_entity in ['organizations', 'repositories']:
         for gh_name in project_data.get(gh_entity, []):
             if gh_name:
@@ -210,17 +233,19 @@ def dependabot_scanning_alerts(api_url, project_data):
                     for alert in alerts:
                         raw_alerts.append(alert)
                         scan_alerts.append([
+                            get_attr(alert, ['number'], ""),
                             gh_name if gh_entity == 'organizations' else alert.get('organization', {}).get('name', "N/A"),
                             gh_name if gh_entity == 'repositories' else alert.get('repository', {}).get('name', "N/A"),
-                            datetime.strptime(alert.get('created_at', "N/A"), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d"),
-                            datetime.strptime(alert.get('updated_at', "N/A"), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d"),
-                            alert.get('security_advisory', {}).get('severity', "N/A"),
-                            alert.get('dependency', {}).get('package', {}).get('name', "N/A"),
-                            alert.get('security_advisory', {}).get('cve_id', "N/A"),
-                            alert.get('security_advisory', {}).get('summary', "N/A"),
-                            alert.get('dependency', {}).get('scope', "N/A"),
-                            alert.get('dependency', {}).get('manifest_path', "N/A"),
-                            alert.get('html_url', "N/A")
+                            datetime.strptime(get_attr(alert, ['created_at']), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d") if get_attr(alert, ['created_at']) != "" else "",
+                            datetime.strptime(get_attr(alert, ['updated_at']), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d") if get_attr(alert, ['updated_at']) != "" else "",
+                            get_attr(alert, ['state'], ""),
+                            get_attr(alert, ['security_advisory', 'severity'], ""),
+                            get_attr(alert, ['dependency', 'package', 'name'], ""),
+                            get_attr(alert, ['security_advisory', 'cve_id'], ""),
+                            get_attr(alert, ['security_advisory', 'summary'], ""),
+                            get_attr(alert, ['dependency', 'scope'], ""),
+                            get_attr(alert, ['dependency', 'manifest_path'], ""),
+                            get_attr(alert, ['html_url'], "")
                         ])
                 except Exception as e:
                     print(f"Error getting dependabot alerts for {'repository' if gh_entity == 'repositories' else 'organization'}: {gh_name} - {e}")
