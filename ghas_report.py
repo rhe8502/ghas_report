@@ -160,14 +160,16 @@ def get_attr(alert, keys, default=""):
 def code_scanning_alerts(api_url, project_data):
     raw_alerts = []
     scan_alerts = []
+
     for gh_entity in ['organizations', 'repositories']:
         for gh_name in project_data.get(gh_entity, []):
             if gh_name:
                 try:
                     owner = project_data.get('owner') if gh_entity == 'repositories' else None
                     alerts = get_code_scanning_alerts(api_url, owner=owner, org_name=gh_name if gh_entity == 'organizations' else None, repo_name=gh_name if gh_entity == 'repositories' else None)[0]
+                    raw_alerts = alerts
+
                     for alert in alerts:
-                        raw_alerts.append(alert)
                         scan_alerts.append([
                             get_attr(alert, ['number'], ""),
                             gh_name if gh_entity == 'organizations' else get_attr(alert, ['organization', 'name'], ""),
@@ -202,8 +204,9 @@ def secret_scanning_alerts(api_url, project_data):
                 try:
                     owner = project_data.get('owner') if gh_entity == 'repositories' else None
                     alerts = get_secret_scanning_alerts(api_url, owner=owner, org_name=gh_name if gh_entity == 'organizations' else None, repo_name=gh_name if gh_entity == 'repositories' else None)[0]
+                    raw_alerts.append(alert)
+
                     for alert in alerts:
-                        raw_alerts.append(alert)
                         scan_alerts.append([
                             get_attr(alert, ['number'], ""),
                             gh_name if gh_entity == 'organizations' else alert.get('organization', {}).get('name', "N/A"),
@@ -230,8 +233,9 @@ def dependabot_scanning_alerts(api_url, project_data):
                 try:
                     owner = project_data.get('owner') if gh_entity == 'repositories' else None
                     alerts = get_dependabot_alerts(api_url, owner=owner, org_name=gh_name if gh_entity == 'organizations' else None, repo_name=gh_name if gh_entity == 'repositories' else None)[0]
+                    raw_alerts.append(alert)
+
                     for alert in alerts:
-                        raw_alerts.append(alert)
                         scan_alerts.append([
                             get_attr(alert, ['number'], ""),
                             gh_name if gh_entity == 'organizations' else alert.get('organization', {}).get('name', "N/A"),
