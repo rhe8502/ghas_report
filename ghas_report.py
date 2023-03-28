@@ -193,7 +193,7 @@ def scan_alerts(api_url, project_data, alert_type, output_type=None):
                             gh_name if gh_entity == 'repositories' else safe_get(alert, ['repository', 'name'], ""),
                             datetime.strptime(safe_get(alert, ['created_at']), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d") if safe_get(alert, ['created_at']) != "" else "",
                             datetime.strptime(safe_get(alert, ['updated_at']), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d") if safe_get(alert, ['updated_at']) != "" else "",
-                            days_since_created
+                            days_since_created if safe_get(alert, ['state']) == "open" else "0"
                         ]
 
                         # Add Code Scanning alert data to the list
