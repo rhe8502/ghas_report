@@ -109,9 +109,9 @@ def write_alerts(alert_data, project_name, output_type=None, calling_function=No
     # Set the column headers for the CSV file depending on the type of alert
     scan_options = {
         'alert_count': ['Organization', 'Repository', 'Code Scanning Alerts', 'Secret Scanning Alerts', 'Dependabot Alerts'],
-        'code_scan': ['Alert', 'Organization', 'Repository', 'Date Created', 'Date Updated', 'Days Open', 'Severity', 'State', 'Fixed At', 'Rule ID', 'Description', 'Category', 'File', 'Dismissed At', 'Dismissed By', 'Dismissed Reason', 'Dismissed Comment', 'Tool', 'GitHub URL'],
-        'secret_scan': ['Alert', 'Organization', 'Repository', 'Date Created', 'Date Updated', 'Days Open', 'State', 'Secret Type Name', 'Secret Type', 'GitHub URL'],
-        'dependabot_scan': ['Alert', 'Organization', 'Repository', 'Date Created', 'Date Updated', 'Days Open', 'Severity', 'State', 'Fixed At', 'Package Name', 'CVE ID', 'Summary', 'Dismissed At', 'Dismissed By', 'Dismissed Reason', 'Dismissed Comment', 'Scope', 'Manifest ID', 'GitHub URL']
+        'code_scan': ['Alert', 'Organization', 'Repository', 'Date Created', 'Date Updated', 'Days Open', 'Severity', 'State', 'Rule ID', 'Description', 'Category', 'File', 'Fixed At', 'Dismissed At', 'Dismissed By', 'Dismissed Reason', 'Dismissed Comment', 'Tool', 'GitHub URL'],
+        'secret_scan': ['Alert', 'Organization', 'Repository', 'Date Created', 'Date Updated', 'Days Open', 'State', 'Resolved At', 'Resolved By', 'Resolved Reason', 'Secret Type Name', 'Secret Type', 'GitHub URL'],
+        'dependabot_scan': ['Alert', 'Organization', 'Repository', 'Date Created', 'Date Updated', 'Days Open', 'Severity', 'State', 'Package Name', 'CVE ID', 'Summary', 'Fixed At', 'Dismissed At', 'Dismissed By', 'Dismissed Reason', 'Dismissed Comment', 'Scope', 'Manifest ID', 'GitHub URL']
     }
     
     # Write the alert data to a file in the specified format
@@ -201,23 +201,26 @@ def scan_alerts(api_url, project_data, alert_type, output_type=None):
                             alert_data.extend([
                                 safe_get(alert, ['rule', 'security_severity_level'], ""),
                                 safe_get(alert, ['state'], ""),
-                                datetime.strptime(safe_get(alert, ['fixed_at']), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d") if safe_get(alert, ['fixed_at']) != "" else "",
                                 safe_get(alert, ['rule', 'id'], ""),
                                 safe_get(alert, ['most_recent_instance', 'message', 'text'], ""),
                                 safe_get(alert, ['most_recent_instance', 'category'], ""),
                                 safe_get(alert, ['most_recent_instance', 'location', 'path'], ""),
+                                datetime.strptime(safe_get(alert, ['fixed_at']), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d") if safe_get(alert, ['fixed_at']) != "" else "",
                                 datetime.strptime(safe_get(alert, ['dismissed_at']), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d") if safe_get(alert, ['dismissed_at']) != "" else "",                               
                                 safe_get(alert, ['dismissed_by', 'login'], ""),
                                 safe_get(alert, ['dismissed_reason'], ""),
                                 safe_get(alert, ['dismissed_comment'], ""),
                                 safe_get(alert, ['tool', 'name'], "") + ' ' + safe_get(alert, ['tool', 'version'], ""),
-                                safe_get(alert, ['html_url'], ""),
+                                safe_get(alert, ['html_url'], "")
                             ])
                                 
                         # Add Secret Scanning alert data to the list
                         elif alert_type == 'secretscan':
                             alert_data.extend([
                                 safe_get(alert, ['state'], ""),
+                                datetime.strptime(safe_get(alert, ['resolved_at']), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d") if safe_get(alert, ['resolved_at']) != "" else "",
+                                safe_get(alert, ['resolved_by', 'login'], ""),
+                                safe_get(alert, ['resolution'], ""),
                                 safe_get(alert, ['secret_type_display_name'], ""),
                                 safe_get(alert, ['secret_type'], ""),
                                 safe_get(alert, ['html_url'], "")
@@ -228,17 +231,17 @@ def scan_alerts(api_url, project_data, alert_type, output_type=None):
                             alert_data.extend([
                                 safe_get(alert, ['security_advisory', 'severity'], ""),
                                 safe_get(alert, ['state'], ""),
-                                datetime.strptime(safe_get(alert, ['fixed_at']), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d") if safe_get(alert, ['fixed_at']) != "" else "",
                                 safe_get(alert, ['dependency', 'package', 'name'], ""),
                                 safe_get(alert, ['security_advisory', 'cve_id'], ""),
                                 safe_get(alert, ['security_advisory', 'summary'], ""),
+                                datetime.strptime(safe_get(alert, ['fixed_at']), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d") if safe_get(alert, ['fixed_at']) != "" else "",
                                 datetime.strptime(safe_get(alert, ['dismissed_at']), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d") if safe_get(alert, ['dismissed_at']) != "" else "",
                                 safe_get(alert, ['dismissed_by', 'login'], ""),
                                 safe_get(alert, ['dismissed_reason'], " "),
                                 safe_get(alert, ['dismissed_comment'], ""),
                                 safe_get(alert, ['dependency', 'scope'], ""),
                                 safe_get(alert, ['dependency', 'manifest_path'], ""),
-                                safe_get(alert, ['html_url'], ""),
+                                safe_get(alert, ['html_url'], "")
                             ])
                         scan_alerts.append(alert_data)
                 except Exception as e:
