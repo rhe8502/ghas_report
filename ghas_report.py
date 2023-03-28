@@ -16,7 +16,7 @@
 #
 # Author: Rupert Herbst <rhe8502(at)pm.me>
 # Package: ghas_report.py
-# Version: x.x.x
+# Version: 0.1
 # Project URL: https://github.com/rhe8502/ghas_report/
 
 """
@@ -27,7 +27,6 @@ import argparse
 import csv
 import json
 import requests
-import sys
 from datetime import datetime
 
 # Handle API error responses
@@ -56,7 +55,6 @@ def get_code_scanning_alerts(api_url, org_name=None, owner=None, repo_name=None)
         #url = f"{api_url}/orgs/{org_name}/code-scanning/alerts?state=open"
         url = f"{api_url}/orgs/{org_name}/code-scanning/alerts"
 
-   
     response = requests.get(url, headers=headers)
 
     if response.status_code == 200:
@@ -108,13 +106,15 @@ def write_alerts(alert_data, project_name, output_type=None, calling_function=No
     output_type = output_type if output_type is not None else 'csv'
     filename = f"{project_name}-{calling_function}-{now.strftime('%Y%m%d%H%M%S')}.{output_type}"
 
+    # Set the column headers for the CSV file depending on the type of alert
     scan_options = {
         'alert_count': ['Organization', 'Repository', 'Code Scanning Alerts', 'Secret Scanning Alerts', 'Dependabot Alerts'],
-        'code_scan': ['Alert', 'Organization', 'Repository', 'Date Created', 'Date Updated', 'Severity', 'State', 'Fixed At', 'Rule ID', 'Description', 'Category', 'File', 'Dismissed At', 'Dismissed By', 'Dismissed Reason', 'Dismissed Comment', 'Tool', 'GitHub URL'],
-        'secret_scan': ['Alert', 'Organization', 'Repository', 'Date Created', 'Date Updated',  'State', 'Secret Type Name', 'Secret Type', 'GitHub URL'],
-        'dependabot_scan': ['Alert', 'Organization', 'Repository', 'Date Created', 'Date Updated', 'Severity', 'State', 'Fixed At', 'Package Name', 'CVE ID', 'Summary', 'Dismissed At', 'Dismissed By', 'Dismissed Reason', 'Dismissed Comment', 'Scope', 'Manifest ID', 'GitHub URL']
+        'code_scan': ['Alert', 'Organization', 'Repository', 'Date Created', 'Date Updated', 'Days Open', 'Severity', 'State', 'Fixed At', 'Rule ID', 'Description', 'Category', 'File', 'Dismissed At', 'Dismissed By', 'Dismissed Reason', 'Dismissed Comment', 'Tool', 'GitHub URL'],
+        'secret_scan': ['Alert', 'Organization', 'Repository', 'Date Created', 'Date Updated', 'Days Open', 'State', 'Secret Type Name', 'Secret Type', 'GitHub URL'],
+        'dependabot_scan': ['Alert', 'Organization', 'Repository', 'Date Created', 'Date Updated', 'Days Open', 'Severity', 'State', 'Fixed At', 'Package Name', 'CVE ID', 'Summary', 'Dismissed At', 'Dismissed By', 'Dismissed Reason', 'Dismissed Comment', 'Scope', 'Manifest ID', 'GitHub URL']
     }
-
+    
+    # Write the alert data to a file in the specified format
     try:
         with open(filename, 'w', encoding='utf-8', newline='') as f:
             if output_type == 'json':
@@ -130,7 +130,7 @@ def write_alerts(alert_data, project_name, output_type=None, calling_function=No
         print("Error: I/O error")
         exit(1)
 
-# Process alert counts for each organization and repository and add them to a list
+# Process alert counts for each organization and repository and add them to a list (Candidate for refactoring)
 def alert_count(api_url, project_data):
     alert_count = []
     for gh_entity in ['organizations', 'repositories']:
@@ -147,7 +147,7 @@ def alert_count(api_url, project_data):
     return {"raw_alerts": alert_count, "scan_alerts": alert_count}
 
 # Helper function to avoid nonetype errors
-def get_attr(alert, keys, default=""):
+def safe_get(alert, keys, default=""):
     result = alert
     for key in keys:
         if result:
@@ -156,108 +156,93 @@ def get_attr(alert, keys, default=""):
             break
     return default if result is None else result
 
-# Process code scanning alerts for each organization and repository and add them to a list
-def code_scanning_alerts(api_url, project_data):
+# Process alerts for each organization and repository
+def scan_alerts(api_url, project_data, alert_type, output_type=None):
     raw_alerts = []
     scan_alerts = []
 
+    # Get the alerts for the specified alert type
+    alert_functions = {
+        'codescan': get_code_scanning_alerts,
+        'secretscan': get_secret_scanning_alerts,
+        'dependabot': get_dependabot_alerts,
+    }
+
+    # Iterate through each organization and repository and get the alerts
     for gh_entity in ['organizations', 'repositories']:
         for gh_name in project_data.get(gh_entity, []):
             if gh_name:
                 try:
                     owner = project_data.get('owner') if gh_entity == 'repositories' else None
-                    alerts = get_code_scanning_alerts(api_url, owner=owner, org_name=gh_name if gh_entity == 'organizations' else None, repo_name=gh_name if gh_entity == 'repositories' else None)[0]
-                    raw_alerts = alerts
+                    alerts = alert_functions[alert_type](api_url, owner=owner, org_name=gh_name if gh_entity == 'organizations' else None, repo_name=gh_name if gh_entity == 'repositories' else None)[0]
 
+                    # If the output type is json just return the raw alerts and ignore the rest of the function
+                    if output_type == 'json':
+                        raw_alerts = alerts
+                        return({"raw_alerts": raw_alerts})
+
+                    # Process alerts for each organization and repository and add them to a list
                     for alert in alerts:
-                        scan_alerts.append([
-                            get_attr(alert, ['number'], ""),
-                            gh_name if gh_entity == 'organizations' else get_attr(alert, ['organization', 'name'], ""),
-                            gh_name if gh_entity == 'repositories' else get_attr(alert, ['repository', 'name'], ""),
-                            datetime.strptime(get_attr(alert, ['created_at']), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d") if get_attr(alert, ['created_at']) != "" else "",
-                            datetime.strptime(get_attr(alert, ['updated_at']), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d") if get_attr(alert, ['updated_at']) != "" else "",
-                            get_attr(alert, ['rule', 'security_severity_level'], ""),
-                            get_attr(alert, ['state'], ""),
-                            datetime.strptime(get_attr(alert, ['fixed_at']), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d") if get_attr(alert, ['fixed_at']) != "" else "",
-                            get_attr(alert, ['rule', 'id'], ""),
-                            get_attr(alert, ['most_recent_instance', 'message', 'text'], ""),
-                            get_attr(alert, ['most_recent_instance', 'category'], ""),
-                            get_attr(alert, ['most_recent_instance', 'location', 'path'], ""),                            
-                            datetime.strptime(get_attr(alert, ['dismissed_at']), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d") if get_attr(alert, ['dismissed_at']) != "" else "",
-                            get_attr(alert, ['dismissed_by', 'login'], ""),
-                            get_attr(alert, ['dismissed_reason'], " "),
-                            get_attr(alert, ['dismissed_comment'], " "),
-                            get_attr(alert, ['tool', 'name'], "") + ' ' + get_attr(alert, ['tool', 'version'], ""),
-                            get_attr(alert, ['html_url'], "")
-                        ])
+                        # Get the days open since the alert was created
+                        days_since_created = (datetime.now() - datetime.strptime(safe_get(alert, ['created_at']), "%Y-%m-%dT%H:%M:%SZ")).days if safe_get(alert, ['created_at']) != "" else ""
+                        
+                        # Add default values for all alert types to the list
+                        alert_data = [
+                            safe_get(alert, ['number']),
+                            gh_name if gh_entity == 'organizations' else safe_get(alert, ['organization', 'name'], ""),
+                            gh_name if gh_entity == 'repositories' else safe_get(alert, ['repository', 'name'], ""),
+                            datetime.strptime(safe_get(alert, ['created_at']), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d") if safe_get(alert, ['created_at']) != "" else "",
+                            datetime.strptime(safe_get(alert, ['updated_at']), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d") if safe_get(alert, ['updated_at']) != "" else "",
+                            days_since_created
+                        ]
+
+                        # Add Code Scanning alert data to the list
+                        if alert_type == 'codescan':
+                            alert_data.extend([
+                                safe_get(alert, ['rule', 'security_severity_level'], ""),
+                                safe_get(alert, ['state'], ""),
+                                datetime.strptime(safe_get(alert, ['fixed_at']), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d") if safe_get(alert, ['fixed_at']) != "" else "",
+                                safe_get(alert, ['rule', 'id'], ""),
+                                safe_get(alert, ['most_recent_instance', 'message', 'text'], ""),
+                                safe_get(alert, ['most_recent_instance', 'category'], ""),
+                                safe_get(alert, ['most_recent_instance', 'location', 'path'], ""),
+                                datetime.strptime(safe_get(alert, ['dismissed_at']), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d") if safe_get(alert, ['dismissed_at']) != "" else "",                               
+                                safe_get(alert, ['dismissed_by', 'login'], ""),
+                                safe_get(alert, ['dismissed_reason'], ""),
+                                safe_get(alert, ['dismissed_comment'], ""),
+                                safe_get(alert, ['tool', 'name'], "") + ' ' + safe_get(alert, ['tool', 'version'], ""),
+                                safe_get(alert, ['html_url'], ""),
+                            ])
+                                
+                        # Add Secret Scanning alert data to the list
+                        elif alert_type == 'secretscan':
+                            alert_data.extend([
+                                safe_get(alert, ['state'], ""),
+                                safe_get(alert, ['secret_type_display_name'], ""),
+                                safe_get(alert, ['secret_type'], ""),
+                                safe_get(alert, ['html_url'], "")
+                            ])
+                
+                        # Add Dependabot alert data to the list
+                        elif alert_type == 'dependabot':
+                            alert_data.extend([
+                                safe_get(alert, ['security_advisory', 'severity'], ""),
+                                safe_get(alert, ['state'], ""),
+                                datetime.strptime(safe_get(alert, ['fixed_at']), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d") if safe_get(alert, ['fixed_at']) != "" else "",
+                                safe_get(alert, ['dependency', 'package', 'name'], ""),
+                                safe_get(alert, ['security_advisory', 'cve_id'], ""),
+                                safe_get(alert, ['security_advisory', 'summary'], ""),
+                                datetime.strptime(safe_get(alert, ['dismissed_at']), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d") if safe_get(alert, ['dismissed_at']) != "" else "",
+                                safe_get(alert, ['dismissed_by', 'login'], ""),
+                                safe_get(alert, ['dismissed_reason'], " "),
+                                safe_get(alert, ['dismissed_comment'], ""),
+                                safe_get(alert, ['dependency', 'scope'], ""),
+                                safe_get(alert, ['dependency', 'manifest_path'], ""),
+                                safe_get(alert, ['html_url'], ""),
+                            ])
+                        scan_alerts.append(alert_data)
                 except Exception as e:
-                    print(f"Error getting CodeQL alerts for {'repository' if gh_entity == 'repositories' else 'organization'}: {gh_name} - {e}")
-    return {"raw_alerts": raw_alerts, "scan_alerts": scan_alerts}
-
-# Process Secret Scanning alerts for each organization and repository and add them to a list
-def secret_scanning_alerts(api_url, project_data):
-    raw_alerts = []
-    scan_alerts = []
-    for gh_entity in ['organizations', 'repositories']:
-        for gh_name in project_data.get(gh_entity, []):
-            if gh_name:
-                try:
-                    owner = project_data.get('owner') if gh_entity == 'repositories' else None
-                    alerts = get_secret_scanning_alerts(api_url, owner=owner, org_name=gh_name if gh_entity == 'organizations' else None, repo_name=gh_name if gh_entity == 'repositories' else None)[0]
-                    raw_alerts.append(alert)
-
-                    for alert in alerts:
-                        scan_alerts.append([
-                            get_attr(alert, ['number'], ""),
-                            gh_name if gh_entity == 'organizations' else alert.get('organization', {}).get('name', "N/A"),
-                            gh_name if gh_entity == 'repositories' else alert.get('repository', {}).get('name', "N/A"),
-                            get_attr(alert, ['repository', 'name'], ""),
-                            datetime.strptime(get_attr(alert, ['created_at']), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d") if get_attr(alert, ['created_at']) != "" else "",
-                            datetime.strptime(get_attr(alert, ['updated_at']), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d") if get_attr(alert, ['updated_at']) != "" else "",
-                            get_attr(alert, ['state'], ""),
-                            get_attr(alert, ['secret_type_display_name'], ""),
-                            get_attr(alert, ['secret_type'], ""),
-                            get_attr(alert, ['html_url'], "")
-                        ])
-                except Exception as e:
-                    print(f"Error getting secret scanning alerts for {'repository' if gh_entity == 'repositories' else 'organization'}: {gh_name} - {e}")
-    return {"raw_alerts": raw_alerts, "scan_alerts": scan_alerts}
-
-# Process Dependabot alerts for each organization and repository and add them to a list
-def dependabot_scanning_alerts(api_url, project_data):
-    raw_alerts = []
-    scan_alerts = []
-    for gh_entity in ['organizations', 'repositories']:
-        for gh_name in project_data.get(gh_entity, []):
-            if gh_name:
-                try:
-                    owner = project_data.get('owner') if gh_entity == 'repositories' else None
-                    alerts = get_dependabot_alerts(api_url, owner=owner, org_name=gh_name if gh_entity == 'organizations' else None, repo_name=gh_name if gh_entity == 'repositories' else None)[0]
-                    raw_alerts.append(alert)
-
-                    for alert in alerts:
-                        scan_alerts.append([
-                            get_attr(alert, ['number'], ""),
-                            gh_name if gh_entity == 'organizations' else alert.get('organization', {}).get('name', "N/A"),
-                            gh_name if gh_entity == 'repositories' else alert.get('repository', {}).get('name', "N/A"),
-                            datetime.strptime(get_attr(alert, ['created_at']), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d") if get_attr(alert, ['created_at']) != "" else "",
-                            datetime.strptime(get_attr(alert, ['updated_at']), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d") if get_attr(alert, ['updated_at']) != "" else "",
-                            get_attr(alert, ['security_advisory', 'severity'], ""),
-                            get_attr(alert, ['state'], ""),
-                            datetime.strptime(get_attr(alert, ['fixed_at']), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d") if get_attr(alert, ['fixed_at']) != "" else "",
-                            get_attr(alert, ['dependency', 'package', 'name'], ""),
-                            get_attr(alert, ['security_advisory', 'cve_id'], ""),
-                            get_attr(alert, ['security_advisory', 'summary'], ""),
-                            datetime.strptime(get_attr(alert, ['dismissed_at']), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d") if get_attr(alert, ['dismissed_at']) != "" else "",
-                            get_attr(alert, ['dismissed_by', 'login'], ""),
-                            get_attr(alert, ['dismissed_reason'], " "),
-                            get_attr(alert, ['dismissed_comment'], " "),
-                            get_attr(alert, ['dependency', 'scope'], ""),
-                            get_attr(alert, ['dependency', 'manifest_path'], ""),
-                            get_attr(alert, ['html_url'], "")
-                        ])
-                except Exception as e:
-                    print(f"Error getting dependabot alerts for {'repository' if gh_entity == 'repositories' else 'organization'}: {gh_name} - {e}")
+                    print(f"Error getting {alert_type} alerts for {'repository' if gh_entity == 'repositories' else 'organization'}: {gh_name} - {e}")
     return {"raw_alerts": raw_alerts, "scan_alerts": scan_alerts}
 
 def main():
@@ -284,10 +269,11 @@ def main():
         "X-GitHub-Api-Version": f"{api_version}"
     }
     
+    # Command-line arguments parser
     parser = argparse.ArgumentParser(description='''
 The script is designed to retrieve various types of GitHub Advanced Security (GHAS) alerts for a specified organization or repository. GHAS alerts can include code scanning alerts, secret scanning alerts, and Dependabot alerts.
 
-It will generate a report based on the specified options and write the results to a file. The output format of the report can also be specified using command-line options. The supported formats are CSV, PDF, HTML, and JSON. By default, the output is written to a CSV file. If the -oA option is specified, then the report will be written to all supported formats.
+It will generate a report based on the specified options and write the results to a file. The output format of the report can also be specified using command-line options. The supported formats are CSV and JSON. By default, the output is written to a CSV file. If the -oA option is specified, then the report will be written to all supported formats.
     ''', formatter_class=argparse.RawTextHelpFormatter)
 
     #Options group
@@ -301,33 +287,12 @@ It will generate a report based on the specified options and write the results t
     alert_group.add_argument('-s', '--secretscan', action='store_true', help='generate Secret Scanning alert report')
     alert_group.add_argument('-d', '--dependabot', action='store_true', help='generate Dependabot alert report')
 
-    # Optional alert reports arguments
-    alert_options_group = parser.add_argument_group('Optional alert report arguments')
-    alert_options_group.add_argument('-v', '--verbose', action='store_true', help='write all information to the output file (only applicable for CSV files)')
-    # alert_options_group.add_argument('-o', '--open', action='store_true', help='only generate reports for open alerts (Alert Count only reports open alerts by default)')
-    # alert_options_group.add_argument('-g', '--org', metavar='ORG', help='specify the organization to generate a report for')
-    # alert_options_group.add_argument('-r', '--repo', metavar='REPO', help='specify the repository to generate a report for')
-
-    # Optional arguments
-    optional_group = parser.add_argument_group('Optional arguments')
-   
     # Output file format arguments
     output_group = parser.add_argument_group('Output file format arguments')
     output_group.add_argument('-wA', '--output-all', action='store_true', help='write output to all formats at once')
     output_group.add_argument('-wC', '--output-csv', action='store_true', help='write output to a CSV file (default format)')
     output_group.add_argument('-wJ', '--output-json', action='store_true', help='write output to a JSON file')
-    # output_group.add_argument('-wP', '--output-pdf', action='store_true', help='write output to a PDF file')
-    # output_group.add_argument('-wH', '--output-html', action='store_true', help='write output to a HTML file')
-
-    # Report type
-    # report_group = parser.add_argument_group('Report type (only applicable for PDF and HTML output formats)')
-    # report_group.add_argument('-Ro', '--report-owasp', action='store_true', help=' OWASP Top 10 - 2021')
-
-    # Optional file arguments
-    # optional_file_group = parser.add_argument_group('Optional file arguments')
-    # optional_file_group.add_argument('-D', '--dir', metavar='DIR', help='specify the directory to write the output to. If none specified, the current directory is used.')
-    # optional_file_group.add_argument('-C', '--config', metavar='CON', default='ghas_config.json', help='specify a config file to use. If none specified "ghas_config.json" is used. If ghas_config.json is not found in the current directory, a new config file will be created.\n\n')
-
+    
     # Parse the arguments
     args = parser.parse_args()
 
@@ -340,7 +305,8 @@ It will generate a report based on the specified options and write the results t
     # Set CSV as the default output type if no output type is specified
     if not output_types:
         output_types = ['csv']
-
+    
+    # If no alert type is specified, print the help message, otherwise, process the alert types that were specified as arguments
     if not alert_types:
         print('\nError: No alert type specified.\n')
         parser.print_help()
@@ -351,9 +317,9 @@ It will generate a report based on the specified options and write the results t
                 for output_type in output_types:
                     {
                         'alerts': lambda: write_alerts(alert_count(api_url, project_data), project_name, output_type, calling_function='alert_count'),
-                        'codescan': lambda: write_alerts(code_scanning_alerts(api_url, project_data), project_name, output_type, calling_function='code_scan'),
-                        'secretscan': lambda: write_alerts(secret_scanning_alerts(api_url, project_data), project_name, output_type, calling_function='secret_scan'),
-                        'dependabot': lambda: write_alerts(dependabot_scanning_alerts(api_url, project_data), project_name, output_type, calling_function='dependabot_scan'),
+                        'codescan': lambda output_type=output_type: write_alerts(scan_alerts(api_url, project_data, 'codescan', output_type), project_name, output_type, calling_function='code_scan'),
+                        'secretscan': lambda output_type=output_type: write_alerts(scan_alerts(api_url, project_data, 'secretscan', output_type), project_name, output_type, calling_function='secret_scan'),
+                        'dependabot': lambda output_type=output_type: write_alerts(scan_alerts(api_url, project_data, 'dependabot', output_type), project_name, output_type, calling_function='dependabot_scan'),
                     }[alert_type]()
             
 if __name__ == '__main__':
