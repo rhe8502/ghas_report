@@ -16,7 +16,7 @@
 #
 # Author: Rupert Herbst <rhe8502(at)pm.me>
 # Package: ghas_report.py
-# Version: 0.1
+# Version: 1.0.0-beta
 # Project URL: https://github.com/rhe8502/ghas_report/
 
 """
@@ -269,6 +269,14 @@ def main():
         "X-GitHub-Api-Version": f"{api_version}"
     }
     
+    # version, date, and author information
+    version_number = "1.0.0-beta"
+    release_date = "2023-03-28"
+    author = "Rupert Herbst <rhe8502(at)pm.me>"
+    
+    # version string
+    version_string = f"GitHub Advanced Security Reporting (%(prog)s)\nVersion: {version_number}\nRelease date: {release_date}\nAuthor: {author}\n\n"
+
     # Command-line arguments parser
     parser = argparse.ArgumentParser(description='''
 The script is designed to retrieve various types of GitHub Advanced Security (GHAS) alerts for a specified organization or repository. GHAS alerts can include code scanning alerts, secret scanning alerts, and Dependabot alerts.
@@ -277,7 +285,8 @@ It will generate a report based on the specified options and write the results t
     ''', formatter_class=argparse.RawTextHelpFormatter)
 
     #Options group
-    parser.add_argument('-V', '--version', action='version', version='%(prog)s v0.1', help='show program\'s version number and exit')
+    # parser.add_argument('-V', '--version', action='version', version='%(prog)s v1.0.0-beta', help='show program\'s version number and exit')
+    parser.add_argument('-V', '--version', action='version', version=version_string, help="show program's version number and exit")
 
     # Alert reports
     alert_group = parser.add_argument_group('Generate alert reports')
