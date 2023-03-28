@@ -21,13 +21,24 @@
 
 """
 GitHub Advanced Security (GHAS) Vulnerability Report
+
+The script is designed to retrieve various types of GitHub Advanced Security (GHAS) alerts
+for a specified organization or repository.
+
+GHAS alerts can include code scanning alerts, secret scanning alerts, and dependabot alerts.
+
+It will generate a report based on the specified options and write the results to a file.
+The output format of the report can also be specified using command-line options.
+
+The supported formats are CSV and JSON. By default, the output is written to a CSV file.
+If the -oA option is specified, then the report will be written to all supported formats.
 """
 
+from datetime import datetime
 import argparse
 import csv
 import json
 import requests
-from datetime import datetime
 
 # Handle API error responses
 def api_error_response(response):
@@ -47,14 +58,11 @@ def api_error_response(response):
         raise Exception(f"Error {response.status_code}: {response.json().get('message', '')}" + (f", Errors: {response.json().get('errors', '')}" if response.json().get('errors') else ''))
 
 # Get Code Scanning alerts and alert count
-def get_code_scanning_alerts(api_url, org_name=None, owner=None, repo_name=None):
-    if repo_name:
-        url = f"{api_url}/repos/{owner}/{repo_name}/code-scanning/alerts"
-        #url = f"{api_url}/repos/{owner}/{repo_name}/code-scanning/alerts?state=open"
-    elif org_name:
-        #url = f"{api_url}/orgs/{org_name}/code-scanning/alerts?state=open"
-        url = f"{api_url}/orgs/{org_name}/code-scanning/alerts"
-
+def get_code_scanning_alerts(api_url, org_name=None, owner=None, repo_name=None, state=None):
+    base_url = f"{api_url}/repos/{owner}/{repo_name}" if repo_name else f"{api_url}/orgs/{org_name}"
+    state_query = "?state=open" if state == "open" else ""
+    url = f"{base_url}/code-scanning/alerts{state_query}"
+        
     response = requests.get(url, headers=headers)
 
     if response.status_code == 200:
@@ -65,13 +73,10 @@ def get_code_scanning_alerts(api_url, org_name=None, owner=None, repo_name=None)
         print(api_error_response(response))
 
 # Get Secret Scanning alerts and alert count
-def get_secret_scanning_alerts(api_url, org_name=None, owner=None, repo_name=None):
-    if repo_name:       
-        # url = f"{api_url}/repos/{owner}/{repo_name}/secret-scanning/alerts?state=open"
-        url = f"{api_url}/repos/{owner}/{repo_name}/secret-scanning/alerts"
-    elif org_name:
-        # url = f"{api_url}/orgs/{org_name}/secret-scanning/alerts?state=open"
-        url = f"{api_url}/orgs/{org_name}/secret-scanning/alerts"
+def get_secret_scanning_alerts(api_url, org_name=None, owner=None, repo_name=None, state=None):
+    base_url = f"{api_url}/repos/{owner}/{repo_name}" if repo_name else f"{api_url}/orgs/{org_name}"
+    state_query = "?state=open" if state == "open" else ""
+    url = f"{base_url}/secret-scanning/alerts{state_query}"
     
     response = requests.get(url, headers=headers)
 
@@ -83,13 +88,10 @@ def get_secret_scanning_alerts(api_url, org_name=None, owner=None, repo_name=Non
         print(api_error_response(response))
  
 # Get Dependabot alerts and alert count
-def get_dependabot_alerts(api_url, org_name=None, owner=None, repo_name=None):
-    if repo_name:
-        # url = f"{api_url}/repos/{owner}/{repo_name}/dependabot/alerts?state=open"
-        url = f"{api_url}/repos/{owner}/{repo_name}/dependabot/alerts"
-    elif org_name:
-        # url = f"{api_url}/orgs/{org_name}/dependabot/alerts?state=open"
-        url = f"{api_url}/orgs/{org_name}/dependabot/alerts"
+def get_dependabot_alerts(api_url, org_name=None, owner=None, repo_name=None, state=None):
+    base_url = f"{api_url}/repos/{owner}/{repo_name}" if repo_name else f"{api_url}/orgs/{org_name}"
+    state_query = "?state=open" if state == "open" else ""
+    url = f"{base_url}/dependabot/alerts{state_query}"
 
     response = requests.get(url, headers=headers)
 
@@ -101,10 +103,10 @@ def get_dependabot_alerts(api_url, org_name=None, owner=None, repo_name=None):
         print(api_error_response(response))
 
 # Write alerts to file
-def write_alerts(alert_data, project_name, output_type=None, calling_function=None):    
+def write_alerts(alert_data, project_name, output_type=None, call_func=None):    
     now = datetime.now()
     output_type = output_type if output_type is not None else 'csv'
-    filename = f"{project_name}-{calling_function}-{now.strftime('%Y%m%d%H%M%S')}.{output_type}"
+    filename = f"{project_name}-{call_func}-{now.strftime('%Y%m%d%H%M%S')}.{output_type}"
 
     # Set the column headers for the CSV file depending on the type of alert
     scan_options = {
@@ -121,11 +123,11 @@ def write_alerts(alert_data, project_name, output_type=None, calling_function=No
                 json.dump(alert_data["raw_alerts"], f, indent=4)
             elif output_type == 'csv':
                 writer = csv.writer(f)
-                header_row = scan_options.get(calling_function, scan_options['code_scan'])
+                header_row = scan_options.get(call_func, scan_options['code_scan'])
                 writer.writerow(header_row)
                 for scan_alert in alert_data["scan_alerts"]:
                     writer.writerow(scan_alert)  
-            print(f"Successfully wrote {calling_function} findings for project \"{project_name}\" to file {filename}")
+            print(f"Successfully wrote {call_func} findings for project \"{project_name}\" to file {filename}")
     except IOError:
         print("Error: I/O error")
         exit(1)
@@ -157,7 +159,7 @@ def safe_get(alert, keys, default=""):
     return default if result is None else result
 
 # Process alerts for each organization and repository
-def scan_alerts(api_url, project_data, alert_type, output_type=None):
+def scan_alerts(api_url, project_data, alert_type, output_type=None ,state=None):
     raw_alerts = []
     scan_alerts = []
 
@@ -174,7 +176,7 @@ def scan_alerts(api_url, project_data, alert_type, output_type=None):
             if gh_name:
                 try:
                     owner = project_data.get('owner') if gh_entity == 'repositories' else None
-                    alerts = alert_functions[alert_type](api_url, owner=owner, org_name=gh_name if gh_entity == 'organizations' else None, repo_name=gh_name if gh_entity == 'repositories' else None)[0]
+                    alerts = alert_functions[alert_type](api_url, owner=owner, org_name=gh_name, state=state if gh_entity == 'organizations' else None, repo_name=gh_name if gh_entity == 'repositories' else None)[0]
 
                     # If the output type is json just return the raw alerts and ignore the rest of the function
                     if output_type == 'json':
@@ -273,7 +275,7 @@ def main():
     }
     
     # version, date, and author information
-    version_number = "1.0.0-beta"
+    version_number = "1.0.0"
     release_date = "2023-03-28"
     author = "Rupert Herbst <rhe8502(at)pm.me>"
     
@@ -288,7 +290,6 @@ It will generate a report based on the specified options and write the results t
     ''', formatter_class=argparse.RawTextHelpFormatter)
 
     #Options group
-    # parser.add_argument('-V', '--version', action='version', version='%(prog)s v1.0.0-beta', help='show program\'s version number and exit')
     parser.add_argument('-V', '--version', action='version', version=version_string, help="show program's version number and exit")
 
     # Alert reports
@@ -299,6 +300,10 @@ It will generate a report based on the specified options and write the results t
     alert_group.add_argument('-s', '--secretscan', action='store_true', help='generate Secret Scanning alert report')
     alert_group.add_argument('-d', '--dependabot', action='store_true', help='generate Dependabot alert report')
 
+  # Optional alert reports arguments
+    alert_options_group = parser.add_argument_group('Optional alert report arguments')
+    alert_options_group.add_argument('-o', '--open', action='store_true', help='only generate reports for open alerts (Alert Count only reports open alerts)')
+
     # Output file format arguments
     output_group = parser.add_argument_group('Output file format arguments')
     output_group.add_argument('-wA', '--output-all', action='store_true', help='write output to all formats at once')
@@ -308,16 +313,20 @@ It will generate a report based on the specified options and write the results t
     # Parse the arguments
     args = parser.parse_args()
 
-    # Define the list of alert types to process. If the -A flag is present, include all alert types. Otherwise, include only the alert types that were passed as arguments
-    alert_types = ['alerts', 'codescan', 'secretscan', 'dependabot'] if args.all else [t for t in ['alerts', 'codescan', 'secretscan', 'dependabot'] if getattr(args, t)]
-    
-    # Define the list of output types to process. If the -wA flag is present, include all output types. Otherwise, include only the output types that were passed as arguments
-    output_types = ['csv', 'json'] if args.output_all else [t for t in ['csv', 'json'] if getattr(args, f'output_{t}')]
+    # Check if --output-all is used together with --output-csv or --output-json and exit if it is
+    if args.output_all and (args.output_csv or args.output_json):
+        print("Error: --output-all cannot be used together with --output-csv or --output-json")
+        exit(1)
 
-    # Set CSV as the default output type if no output type is specified
-    if not output_types:
-        output_types = ['csv']
+    # Define the list of alert types to process. If the -A flag is present, include all alert types. Otherwise, include only the alert types that were passed as arguments
+    alert_types = ['alerts', 'codescan', 'secretscan', 'dependabot'] if args.all else [alert_type for alert_type in ['alerts', 'codescan', 'secretscan', 'dependabot'] if getattr(args, alert_type)]
     
+    # Define the list of output types to process. If the -wA flag is present, include all output types. Otherwise, include only the output types that were passed as arguments, if no output types are specified, default to CSV
+    output_types = ['csv', 'json'] if args.output_all else [output_type for output_type in ['csv', 'json'] if getattr(args, f'output_{output_type}')] or ['csv']
+
+    # Set state to 'open' if the -o flag is present
+    alert_state = 'open' if args.open else ''
+
     # If no alert type is specified, print the help message, otherwise, process the alert types that were specified as arguments
     if not alert_types:
         print('\nError: No alert type specified.\n')
@@ -328,10 +337,10 @@ It will generate a report based on the specified options and write the results t
             for alert_type in alert_types:
                 for output_type in output_types:
                     {
-                        'alerts': lambda: write_alerts(alert_count(api_url, project_data), project_name, output_type, calling_function='alert_count'),
-                        'codescan': lambda output_type=output_type: write_alerts(scan_alerts(api_url, project_data, 'codescan', output_type), project_name, output_type, calling_function='code_scan'),
-                        'secretscan': lambda output_type=output_type: write_alerts(scan_alerts(api_url, project_data, 'secretscan', output_type), project_name, output_type, calling_function='secret_scan'),
-                        'dependabot': lambda output_type=output_type: write_alerts(scan_alerts(api_url, project_data, 'dependabot', output_type), project_name, output_type, calling_function='dependabot_scan'),
+                        'alerts': lambda: write_alerts(alert_count(api_url, project_data), project_name, output_type, call_func='alert_count'),
+                        'codescan': lambda output_type=output_type: write_alerts(scan_alerts(api_url, project_data, 'codescan', output_type, alert_state), project_name, output_type, call_func='code_scan'),
+                        'secretscan': lambda output_type=output_type: write_alerts(scan_alerts(api_url, project_data, 'secretscan', output_type, alert_state), project_name, output_type, call_func='secret_scan'),
+                        'dependabot': lambda output_type=output_type: write_alerts(scan_alerts(api_url, project_data, 'dependabot', output_type, alert_state), project_name, output_type, call_func='dependabot_scan'),
                     }[alert_type]()
             
 if __name__ == '__main__':
