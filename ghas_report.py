@@ -218,13 +218,14 @@ def write_alerts(alert_data, project_name, output_type=None, rep_path="", call_f
     """
     # Set output type to CSV is none defined
     output_type = output_type if output_type is not None else 'csv'
-
+    
     # Check if a report path is defined and create the file path, otherwise create a folder for the current date and create the file path
     if rep_path:
         filepath = os.path.join(rep_path, f"{project_name}-{call_func}-{datetime.now():%Y%m%d%H%M%S}.{output_type}")
     else:
         filepath = os.path.join(rep_path, f"{datetime.now().strftime('%Y%m%d')}", f"{project_name}-{call_func}-{datetime.now():%Y%m%d%H%M%S}.{output_type}")
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+    
+    os.makedirs(os.path.dirname(filepath), exist_ok=True)
    
     # Set the column headers for the CSV file depending on the type of alert
     scan_options = {
