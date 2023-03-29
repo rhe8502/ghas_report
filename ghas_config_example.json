@@ -5,7 +5,8 @@
         "gh_api_version": "2022-11-28"
     },
     "location": {
-        "reports": ""
+        "reports": "",
+        "key_file": ""
     },
     "projects": {
         "Project1": {
