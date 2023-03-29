@@ -24,6 +24,7 @@ Generate encrypted API key for GitHub Advanced Security (GHAS) Vulnerability Rep
 """
 
 from cryptography.fernet import Fernet
+import getpass
 import json
 import os
 
@@ -40,7 +41,7 @@ def load_fernet_key(script_dir):
         try:
             with open(env_file, "rb") as f:
                 key = f.read()
-            print(f"Using encryption key from \"{env_file}\". If you want to generate a new encryption key delete \"{env_file_name}\" and rerun the script.")
+            print(f"Using encryption key from \"{env_file}\". If you want to generate a new encryption key delete \"{env_file_name}\" and re-run the script.")
             return Fernet(key)
         except IOError as e:
             print(f"Error reading from {e.filename}: {e}")
@@ -71,7 +72,8 @@ def store_api_key(script_dir):
     fernet_key = load_fernet_key(script_dir)
 
     # Prompt user for the GitHub API key
-    api_key = input("\nEnter your GitHub API key: ")
+    print("\nNote: For security reasons, your GitHub API key will not be displayed as you type.")
+    api_key = getpass.getpass("Enter your GitHub API key: ")
 
     # Encrypt the API key with the Fernet encryption key
     enc_api_key = fernet_key.encrypt(api_key.encode())
@@ -84,7 +86,7 @@ def store_api_key(script_dir):
         print(f"Error reading from {e.filename}: {e}")
         exit(1)
     
-    print(f"New API key stored in {conf_file}\n")
+    print(f"\nNew API key stored in {conf_file}\n")
     config["connection"]["gh_api_key"] = enc_api_key.decode()
 
     try:
@@ -124,9 +126,8 @@ def create_config(conf_file):
         exit(1)
 
 def main():
-     # Determine script location
+    # Determine script location
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    
     store_api_key(script_dir)
 
 if __name__ == '__main__':
