@@ -70,8 +70,7 @@ def load_fernet_key(script_dir):
             print(f"Using encryption key from \"{env_file}\". If you want to generate a new encryption key delete \"{env_file_name}\" and re-run the script.")
             return Fernet(key)
         except IOError as e:
-            print(f"Error reading from {e.filename}: {e}")
-            exit(1)
+            raise SystemExit(f"Error reading from {e.filename}: {e}")
     else:
         # If file doesn't exist, generate a new encryption key and save it to the file
         key = Fernet.generate_key()
@@ -83,8 +82,7 @@ def load_fernet_key(script_dir):
             print(f"New key generated and saved to {env_file}")
             return Fernet(key)
         except IOError as e:
-            print(f"Error writing to {e.filename}: {e}")
-            exit(1)
+            raise SystemExit(f"Error writing to {e.filename}: {e}")
 
 def store_api_key(script_dir):
     """
@@ -122,8 +120,7 @@ def store_api_key(script_dir):
         with open(conf_file, "r") as f:
             config = json.load(f)
     except (FileNotFoundError, json.JSONDecodeError) as e:
-        print(f"Error reading from {e.filename}: {e}")
-        exit(1)
+        raise SystemExit(f"Error reading from {e.filename}: {e}")
     
     print(f"\nNew API key stored in {conf_file}\n")
     config["connection"]["gh_api_key"] = enc_api_key.decode()
@@ -132,8 +129,7 @@ def store_api_key(script_dir):
         with open(conf_file, "w") as f:
             json.dump(config, f, indent=4)
     except IOError as e:
-        print(f"Error writing to {conf_file}: {e}")
-        exit(1)
+        raise SystemExit(f"Error writing to {e.filename}: {e}")
     
 def create_config(conf_file):
     """
@@ -155,7 +151,8 @@ def create_config(conf_file):
             "gh_api_version": "2022-11-28"
         },
         "location": {
-            "reports": ""
+            "reports": "",
+            "key_file": ""
         },
         "projects": {
             "YOUR_PROJECT_NAME": {
@@ -175,8 +172,7 @@ def create_config(conf_file):
         with open(conf_file, "w") as f:
             json.dump(default_config, f, indent=4)
     except IOError as e:
-        print(f"Error writing to {conf_file}: {e}")
-        exit(1)
+        raise SystemExit(f"Error writing to {e.filename}: {e}")
 
 def main():
     # Determine script location
