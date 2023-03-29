@@ -407,7 +407,7 @@ def main():
 
     # version, date, and author information
     version_number = "1.0.0"
-    release_date = "2023-03-29"
+    release_date = "2023-03-30"
     url = "https://github.com/rhe8502/ghas_report"
     
     # version string

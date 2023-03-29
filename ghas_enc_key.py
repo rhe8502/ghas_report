@@ -33,6 +33,7 @@ the encrypted API key from the configuration file, decrypts it, and uses it to a
 """
 
 from cryptography.fernet import Fernet
+import argparse
 import getpass
 import json
 import os
@@ -175,6 +176,25 @@ def create_config(conf_file):
         raise SystemExit(f"Error writing to {e.filename}: {e}")
 
 def main():
+    # version, date, and author information
+    version_number = "1.0.0"
+    release_date = "2023-03-30"
+    url = "https://github.com/rhe8502/ghas_report"
+
+    # version string
+    version_string = f"GHAS Reporting Setup Tool v{version_number} ({url})\nRelease Date: {release_date}\n"
+
+    # Command-line arguments parser
+    parser = argparse.ArgumentParser(description='''
+Generate and store an encrypted GitHub API key for the GitHub Advanced Security (GHAS) Vulnerability Report script.
+    ''', formatter_class=argparse.RawTextHelpFormatter)
+
+    #Options group
+    parser.add_argument('-v', '--version', action='version', version=(version_string), help="show program's version number and exit")
+
+    # Parse the arguments
+    args = parser.parse_args()
+    
     # Determine script location
     script_dir = os.path.dirname(os.path.abspath(__file__))
     store_api_key(script_dir)
