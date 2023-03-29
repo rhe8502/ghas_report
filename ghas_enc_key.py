@@ -20,62 +20,72 @@
 # Project URL: https://github.com/rhe8502/ghas_report/
 
 """
-Generates encrypted API key for GitHub Advanced Security (GHAS) Vulnerability Report script.
+Generate encrypted API key for GitHub Advanced Security (GHAS) Vulnerability Report script.
 """
 
 from cryptography.fernet import Fernet
 import json
 import os
 
-GHAS_CONFIG_FILE = "_ghas_config.json"
+# Configuration file name and encryption key file name. A full path can be used if required.
+GHAS_CONFIG_FILE = "ghas_config.json"
 GHAS_ENV_FILE = ".ghas_env"
 
 def load_fernet_key():
     # Check if .ghas_env file exists
     if os.path.exists(GHAS_ENV_FILE):
-        # If file exists, load the key from the file
+        # If file exists, load the encryption key from the file
         try:
             with open(GHAS_ENV_FILE, "rb") as f:
                 key = f.read()
-            print(f"\nKey loaded from {GHAS_ENV_FILE} file. If you want to generate a new key, delete the {GHAS_ENV_FILE} file.")
+            print(f"Using ecnryption key from \"{GHAS_ENV_FILE}\". If you want to generate a new encryption key delete \"{GHAS_ENV_FILE}\" and rerun the script.")
             return Fernet(key)
         except IOError as e:
-            raise ValueError(f"\nError reading from {GHAS_ENV_FILE}: {e}")
+            print(f"Error reading from {GHAS_ENV_FILE}: {e}")
+            exit(1)
     else:
-        # If file doesn't exist, generate a new key and save it to the file
+        # If file doesn't exist, generate a new encryption key and save it to the file
         key = Fernet.generate_key()
         try:
             with open(GHAS_ENV_FILE, "wb") as f:
                 f.write(key)
-            print(f"\nKey generated and saved to {GHAS_ENV_FILE} file.")
+            # Set the permissions to read and write for the owner only
+            os.chmod(GHAS_ENV_FILE, 0o400)
+            print(f"New key generated and saved to {GHAS_ENV_FILE}")
             return Fernet(key)
         except IOError as e:
-            raise ValueError(f"\nError writing to {GHAS_ENV_FILE}: {e}")
+            print(f"Error writing to {GHAS_ENV_FILE}: {e}")
+            exit(1)
 
 def store_api_key():
-    # Check if GHAS_CONFIG_FILE file exists, if not create it
+    # Check if the JSON configuration file exists, if not create it
     if not os.path.exists(GHAS_CONFIG_FILE):
-        print(f"\n{GHAS_CONFIG_FILE} file not found, creating new file...")
+        print(f"{GHAS_CONFIG_FILE} file not found, creating new file.")
         create_config()
-    # Prompt user to add API key to config file
+
+    # Load the Fernet encryption key
+    fernet_key = load_fernet_key()
+
+    # Prompt user for the GitHub API key
     api_key = input("\nEnter your GitHub API key: ")
 
-    # Encrypt the API key with the Fernet key
-    fernet_key = load_fernet_key()
+    # Encrypt the API key with the Fernet encryption key
     enc_api_key = fernet_key.encrypt(api_key.encode())
 
+    # Load the JSON configuration file and store the encrypted GitHub API key
     with open(GHAS_CONFIG_FILE, "r") as f:
         config = json.load(f)
-    print(f"\nNew API key stored in {GHAS_CONFIG_FILE} file.\n")
+    print(f"New API key stored in {GHAS_CONFIG_FILE}\n")
     config["connection"]["gh_api_key"] = enc_api_key.decode()
     try:
         with open(GHAS_CONFIG_FILE, "w") as f:
             json.dump(config, f, indent=4)
     except IOError as e:
-            raise ValueError(f"\nError writing to {GHAS_CONFIG_FILE}: {e}")
+        print(f"Error writing to {GHAS_CONFIG_FILE}: {e}")
+        exit(1)
     
 def create_config():
-    # Create a new ghas_config.json file with default values
+    # Create a new JSON configuration file with some default values
     default_config = {
         "connection" : {
             "gh_api_url": "https://api.github.com",
@@ -83,15 +93,15 @@ def create_config():
             "gh_api_version": "2022-11-28"
         },
         "projects": {
-            "<PROJECT1>": {
-                "owner": "<OWNER>",
+            "PROJECT_NAME": {
+                "owner": "GITHUB_OWNER",
                 "organizations": [
-                        "<ORG1>",
-                        "<ORG2>"
+                        "ORG1",
+                        "ORG2"
                 ],
                 "repositories": [
-                        "<REPO1>",
-                        "<REPO2>"
+                        "REPO1",
+                        "REPO2"
                 ]
             }
         }
@@ -100,11 +110,11 @@ def create_config():
         with open(GHAS_CONFIG_FILE, "w") as f:
             json.dump(default_config, f, indent=4)
     except IOError as e:
-            raise ValueError(f"\nError writing to {GHAS_CONFIG_FILE}: {e}")
+        print(f"Error writing to {GHAS_CONFIG_FILE}: {e}")
+        exit(1)
 
 def main():
     store_api_key()
-    #create_config()
 
 if __name__ == '__main__':
     main()

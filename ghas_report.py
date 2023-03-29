@@ -16,7 +16,7 @@
 #
 # Author: Rupert Herbst <rhe8502(at)pm.me>
 # Package: ghas_report.py
-# Version: 1.0.0-beta
+# Version: 1.0.0
 # Project URL: https://github.com/rhe8502/ghas_report/
 
 """
@@ -34,11 +34,16 @@ The supported formats are CSV and JSON. By default, the output is written to a C
 If the -oA option is specified, then the report will be written to all supported formats.
 """
 
+from cryptography.fernet import Fernet, InvalidToken
 from datetime import datetime
 import argparse
 import csv
 import json
 import requests
+
+# Configuration file name and encryption key file name. A full path can be used if required.
+GHAS_CONFIG_FILE = "ghas_config.json"
+GHAS_ENV_FILE = ".ghas_env"
 
 # Handle API error responses
 def api_error_response(response):
@@ -251,15 +256,21 @@ def scan_alerts(api_url, project_data, alert_type, output_type=None ,state=None)
     return {"raw_alerts": raw_alerts, "scan_alerts": scan_alerts}
 
 def main():
-    # Load configuration from ghas_config.json file
+    # version, date, and author information
+    version_number = "1.0.0"
+    release_date = "2023-03-29"
+    url = "https://github.com/rhe8502/ghas_report"
+    
+    # version string
+    version_string = f"GHAS Reporting Tool v{version_number} ({url})\nRelease Date: {release_date}\n"
+
     try:
-        with open('ghas_config.json', 'r') as config_file:
-            config = json.load(config_file)
-    except FileNotFoundError:
-        print('Error: ghas_config.json file not found')
-        exit(1)
-    except json.JSONDecodeError:
-        print('Error: ghas_config.json file is not valid JSON')
+        with open(GHAS_CONFIG_FILE) as f:
+            config = json.load(f)
+        with open(GHAS_ENV_FILE, "rb") as f:
+            f_key = f.read()
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        print(f"Error loading {e.filename}: {e}\nYou might need to run the \"ghas_enc_key.py\" script first to generate a new \"{e.filename}\" file.")
         exit(1)
 
     # Get API URL and API key from config    
@@ -267,6 +278,18 @@ def main():
     api_key = config.get('connection', {}).get('gh_api_key')
     api_version = config.get('connection', {}).get('gh_api_version')
     
+    if not api_key:
+        print(f"Error: No API key found in \"{GHAS_CONFIG_FILE}\". Please run the \"ghas_enc_key.py\" script to add your API key.")
+        exit(1)
+
+    fernet = Fernet(f_key)
+
+    try:
+        api_key = fernet.decrypt(api_key.encode()).decode()
+    except InvalidToken:
+        print("Error: Invalid token, your API key might be corrupted. Please run the \"ghas_enc_key.py\" script to encrypt the API key.")
+        exit(1)    
+
     # Define headers for API requests to GitHub as global variable
     global headers
     headers = {
@@ -274,14 +297,6 @@ def main():
         "X-GitHub-Api-Version": f"{api_version}"
     }
     
-    # version, date, and author information
-    version_number = "1.0.0"
-    release_date = "2023-03-28"
-    author = "Rupert Herbst <rhe8502(at)pm.me>"
-    
-    # version string
-    version_string = f"GitHub Advanced Security Reporting (%(prog)s)\nVersion: {version_number}\nRelease date: {release_date}\nAuthor: {author}\n\n"
-
     # Command-line arguments parser
     parser = argparse.ArgumentParser(description='''
 The script is designed to retrieve various types of GitHub Advanced Security (GHAS) alerts for a specified organization or repository. GHAS alerts can include code scanning alerts, secret scanning alerts, and Dependabot alerts.
@@ -290,7 +305,7 @@ It will generate a report based on the specified options and write the results t
     ''', formatter_class=argparse.RawTextHelpFormatter)
 
     #Options group
-    parser.add_argument('-V', '--version', action='version', version=version_string, help="show program's version number and exit")
+    parser.add_argument('-v', '--version', action='version', version=(version_string), help="show program's version number and exit")
 
     # Alert reports
     alert_group = parser.add_argument_group('Generate alert reports')
@@ -300,7 +315,7 @@ It will generate a report based on the specified options and write the results t
     alert_group.add_argument('-s', '--secretscan', action='store_true', help='generate Secret Scanning alert report')
     alert_group.add_argument('-d', '--dependabot', action='store_true', help='generate Dependabot alert report')
 
-  # Optional alert reports arguments
+    # Optional alert reports arguments
     alert_options_group = parser.add_argument_group('Optional alert report arguments')
     alert_options_group.add_argument('-o', '--open', action='store_true', help='only generate reports for open alerts (Alert Count only reports open alerts)')
 

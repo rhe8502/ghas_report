@@ -1,0 +1,29 @@
+{
+    "connection": {
+        "gh_api_url": "https://api.github.com",
+        "gh_api_key": "GITHUB_API_KEY",
+        "gh_api_version": "2022-11-28"
+    },
+    "projects": {
+        "Project1": {
+            "owner": "GITHUB_OWNER",
+            "organizations": [
+                "ORG1"
+            ],
+            "repositories": [
+                "REPO1",
+                "REPO2"
+            ]
+        },
+        "Project2": {
+            "owner": "GITHUB_OWNER",
+            "organizations": [
+                "ORG1",
+                "ORG2"
+            ],
+            "repositories": [
+                "REPO1"
+            ]
+        }
+    }
+}

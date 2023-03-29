@@ -1,8 +1,8 @@
 .venv
-ghas_config.json
-*.csv
-*.json
-print_config.py
-usage-ghas_report.md
-config
 .ghas_env
+*.csv
+*-alert_count-*.json
+*-code_scan-*.json
+*-secret_scan-*.json
+*-dependabot_scan-*.json
+ghas_config.json
