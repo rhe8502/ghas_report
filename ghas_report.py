@@ -40,10 +40,11 @@ import argparse
 import csv
 import json
 import requests
+import os
 
-# Configuration file name and encryption key file name. A full path can be used if required.
-GHAS_CONFIG_FILE = "ghas_config.json"
-GHAS_ENV_FILE = ".ghas_env"
+# Configuration file name and encryption key file name
+conf_file_name = "ghas_config.json"
+env_file_name = ".ghas_env"
 
 # Handle API error responses
 def api_error_response(response):
@@ -264,10 +265,15 @@ def main():
     # version string
     version_string = f"GHAS Reporting Tool v{version_number} ({url})\nRelease Date: {release_date}\n"
 
+    # Determine script location
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    conf_file = os.path.join(script_dir, conf_file_name)
+    env_file = os.path.join(script_dir, env_file_name)
+
     try:
-        with open(GHAS_CONFIG_FILE) as f:
+        with open(conf_file) as f:
             config = json.load(f)
-        with open(GHAS_ENV_FILE, "rb") as f:
+        with open(env_file, "rb") as f:
             f_key = f.read()
     except (FileNotFoundError, json.JSONDecodeError) as e:
         print(f"Error loading {e.filename}: {e}\nYou might need to run the \"ghas_enc_key.py\" script first to generate a new \"{e.filename}\" file.")
@@ -279,7 +285,7 @@ def main():
     api_version = config.get('connection', {}).get('gh_api_version')
     
     if not api_key:
-        print(f"Error: No API key found in \"{GHAS_CONFIG_FILE}\". Please run the \"ghas_enc_key.py\" script to add your API key.")
+        print(f"Error: No API key found in \"{conf_file}\". Please run the \"ghas_enc_key.py\" script to add your API key.")
         exit(1)
 
     fernet = Fernet(f_key)

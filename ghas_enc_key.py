@@ -27,44 +27,48 @@ from cryptography.fernet import Fernet
 import json
 import os
 
-# Configuration file name and encryption key file name. A full path can be used if required.
-GHAS_CONFIG_FILE = "ghas_config.json"
-GHAS_ENV_FILE = ".ghas_env"
+# Configuration file name and encryption key file name
+conf_file_name = "ghas_config.json"
+env_file_name = ".ghas_env"
 
-def load_fernet_key():
+def load_fernet_key(script_dir):
+    env_file = os.path.join(script_dir, env_file_name)
+
     # Check if .ghas_env file exists
-    if os.path.exists(GHAS_ENV_FILE):
+    if os.path.exists(env_file):
         # If file exists, load the encryption key from the file
         try:
-            with open(GHAS_ENV_FILE, "rb") as f:
+            with open(env_file, "rb") as f:
                 key = f.read()
-            print(f"Using ecnryption key from \"{GHAS_ENV_FILE}\". If you want to generate a new encryption key delete \"{GHAS_ENV_FILE}\" and rerun the script.")
+            print(f"Using encryption key from \"{env_file}\". If you want to generate a new encryption key delete \"{env_file_name}\" and rerun the script.")
             return Fernet(key)
         except IOError as e:
-            print(f"Error reading from {GHAS_ENV_FILE}: {e}")
+            print(f"Error reading from {e.filename}: {e}")
             exit(1)
     else:
         # If file doesn't exist, generate a new encryption key and save it to the file
         key = Fernet.generate_key()
         try:
-            with open(GHAS_ENV_FILE, "wb") as f:
+            with open(env_file, "wb") as f:
                 f.write(key)
             # Set the permissions to read and write for the owner only
-            os.chmod(GHAS_ENV_FILE, 0o400)
-            print(f"New key generated and saved to {GHAS_ENV_FILE}")
+            os.chmod(env_file, 0o600)
+            print(f"New key generated and saved to {env_file}")
             return Fernet(key)
         except IOError as e:
-            print(f"Error writing to {GHAS_ENV_FILE}: {e}")
+            print(f"Error writing to {e.filename}: {e}")
             exit(1)
 
-def store_api_key():
+def store_api_key(script_dir):   
+    conf_file = os.path.join(script_dir, conf_file_name)
+
     # Check if the JSON configuration file exists, if not create it
-    if not os.path.exists(GHAS_CONFIG_FILE):
-        print(f"{GHAS_CONFIG_FILE} file not found, creating new file.")
-        create_config()
+    if not os.path.exists(conf_file):
+        print(f"{conf_file} file not found, creating new file.")
+        create_config(conf_file)
 
     # Load the Fernet encryption key
-    fernet_key = load_fernet_key()
+    fernet_key = load_fernet_key(script_dir)
 
     # Prompt user for the GitHub API key
     api_key = input("\nEnter your GitHub API key: ")
@@ -73,18 +77,24 @@ def store_api_key():
     enc_api_key = fernet_key.encrypt(api_key.encode())
 
     # Load the JSON configuration file and store the encrypted GitHub API key
-    with open(GHAS_CONFIG_FILE, "r") as f:
-        config = json.load(f)
-    print(f"New API key stored in {GHAS_CONFIG_FILE}\n")
-    config["connection"]["gh_api_key"] = enc_api_key.decode()
     try:
-        with open(GHAS_CONFIG_FILE, "w") as f:
-            json.dump(config, f, indent=4)
-    except IOError as e:
-        print(f"Error writing to {GHAS_CONFIG_FILE}: {e}")
+        with open(conf_file, "r") as f:
+            config = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        print(f"Error reading from {e.filename}: {e}")
         exit(1)
     
-def create_config():
+    print(f"New API key stored in {conf_file}\n")
+    config["connection"]["gh_api_key"] = enc_api_key.decode()
+
+    try:
+        with open(conf_file, "w") as f:
+            json.dump(config, f, indent=4)
+    except IOError as e:
+        print(f"Error writing to {conf_file}: {e}")
+        exit(1)
+    
+def create_config(conf_file):
     # Create a new JSON configuration file with some default values
     default_config = {
         "connection" : {
@@ -107,14 +117,17 @@ def create_config():
         }
     }
     try:
-        with open(GHAS_CONFIG_FILE, "w") as f:
+        with open(conf_file, "w") as f:
             json.dump(default_config, f, indent=4)
     except IOError as e:
-        print(f"Error writing to {GHAS_CONFIG_FILE}: {e}")
+        print(f"Error writing to {conf_file}: {e}")
         exit(1)
 
 def main():
-    store_api_key()
+     # Determine script location
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    store_api_key(script_dir)
 
 if __name__ == '__main__':
     main()
