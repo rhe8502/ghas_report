@@ -104,8 +104,11 @@ def create_config(conf_file):
             "gh_api_key": "",
             "gh_api_version": "2022-11-28"
         },
+        "report": {
+            "path": ""
+        },
         "projects": {
-            "PROJECT_NAME": {
+            "YOUR_PROJECT_NAME": {
                 "owner": "GITHUB_OWNER",
                 "organizations": [
                         "ORG1",

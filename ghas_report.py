@@ -41,6 +41,7 @@ import csv
 import json
 import requests
 import os
+import time
 
 # Configuration file name and encryption key file name
 conf_file_name = "ghas_config.json"
@@ -73,7 +74,7 @@ def get_code_scanning_alerts(api_url, org_name=None, owner=None, repo_name=None,
 
     if response.status_code == 200:
         code_scanning_alerts = response.json()
-        code_scanning_alert_count = len(code_scanning_alerts)
+        code_scanning_alert_count = sum(1 for alert in code_scanning_alerts if alert['state'] == 'open')
         return code_scanning_alerts, code_scanning_alert_count
     else:
         print(api_error_response(response))
@@ -88,7 +89,7 @@ def get_secret_scanning_alerts(api_url, org_name=None, owner=None, repo_name=Non
 
     if response.status_code == 200:
         secret_scanning_alerts = response.json()
-        secret_scanning_alert_count = len(secret_scanning_alerts)
+        secret_scanning_alert_count = sum(1 for alert in secret_scanning_alerts if alert['state'] == 'open')
         return secret_scanning_alerts, secret_scanning_alert_count
     else:
         print(api_error_response(response))
@@ -103,16 +104,18 @@ def get_dependabot_alerts(api_url, org_name=None, owner=None, repo_name=None, st
 
     if response.status_code == 200:
         dependabot_alerts = response.json()
-        dependabot_alert_count = len(dependabot_alerts)  # get the total number of open Dependabot alerts
+        dependabot_alert_count = sum(1 for alert in dependabot_alerts if alert['state'] == 'open')
         return dependabot_alerts, dependabot_alert_count
     else:
         print(api_error_response(response))
 
 # Write alerts to file
-def write_alerts(alert_data, project_name, output_type=None, call_func=None):    
-    now = datetime.now()
+def write_alerts(alert_data, project_name, output_type=None, rep_path="", call_func=None):    
+    # Set output type to CSV is none defined
     output_type = output_type if output_type is not None else 'csv'
-    filename = f"{project_name}-{call_func}-{now.strftime('%Y%m%d%H%M%S')}.{output_type}"
+
+    # Get current date & time and generate the filename
+    filepath = os.path.join(rep_path, f"{project_name}-{call_func}-{datetime.now():%Y%m%d%H%M%S}.{output_type}")
 
     # Set the column headers for the CSV file depending on the type of alert
     scan_options = {
@@ -124,18 +127,18 @@ def write_alerts(alert_data, project_name, output_type=None, call_func=None):
     
     # Write the alert data to a file in the specified format
     try:
-        with open(filename, 'w', encoding='utf-8', newline='') as f:
+        with open(filepath, 'w', encoding='utf-8', newline='') as f:
+            writer = csv.writer(f) if output_type == 'csv' else None
+            header_row = scan_options.get(call_func, scan_options['code_scan']) if output_type == 'csv' else None
+
             if output_type == 'json':
                 json.dump(alert_data["raw_alerts"], f, indent=4)
             elif output_type == 'csv':
-                writer = csv.writer(f)
-                header_row = scan_options.get(call_func, scan_options['code_scan'])
                 writer.writerow(header_row)
-                for scan_alert in alert_data["scan_alerts"]:
-                    writer.writerow(scan_alert)  
-            print(f"Successfully wrote {call_func} findings for project \"{project_name}\" to file {filename}")
-    except IOError:
-        print("Error: I/O error")
+                writer.writerows(alert_data["scan_alerts"])
+                print(f"Wrote {call_func} for \"{project_name}\" to {filepath}")
+    except IOError as e:
+        print(f"Error writing to {e.filename}: {e}")
         exit(1)
 
 # Process alert counts for each organization and repository and add them to a list (Candidate for refactoring)
@@ -257,6 +260,9 @@ def scan_alerts(api_url, project_data, alert_type, output_type=None ,state=None)
     return {"raw_alerts": raw_alerts, "scan_alerts": scan_alerts}
 
 def main():
+    # The following line is intended for debugging purposes only - do not uncomment 
+    # start_time = time.perf_counter()
+
     # version, date, and author information
     version_number = "1.0.0"
     release_date = "2023-03-29"
@@ -283,7 +289,8 @@ def main():
     api_url = config.get('connection', {}).get('gh_api_url')
     api_key = config.get('connection', {}).get('gh_api_key')
     api_version = config.get('connection', {}).get('gh_api_version')
-    
+    rep_path = config.get('report', {}).get('path')
+
     if not api_key:
         print(f"Error: No API key found in \"{conf_file}\". Please run the \"ghas_enc_key.py\" script to add your API key.")
         exit(1)
@@ -358,11 +365,16 @@ It will generate a report based on the specified options and write the results t
             for alert_type in alert_types:
                 for output_type in output_types:
                     {
-                        'alerts': lambda: write_alerts(alert_count(api_url, project_data), project_name, output_type, call_func='alert_count'),
-                        'codescan': lambda output_type=output_type: write_alerts(scan_alerts(api_url, project_data, 'codescan', output_type, alert_state), project_name, output_type, call_func='code_scan'),
-                        'secretscan': lambda output_type=output_type: write_alerts(scan_alerts(api_url, project_data, 'secretscan', output_type, alert_state), project_name, output_type, call_func='secret_scan'),
-                        'dependabot': lambda output_type=output_type: write_alerts(scan_alerts(api_url, project_data, 'dependabot', output_type, alert_state), project_name, output_type, call_func='dependabot_scan'),
+                        'alerts': lambda: write_alerts(alert_count(api_url, project_data), project_name, output_type, rep_path, call_func='alert_count'),
+                        'codescan': lambda output_type=output_type: write_alerts(scan_alerts(api_url, project_data, 'codescan', output_type, alert_state), project_name, output_type, rep_path, call_func='code_scan'),
+                        'secretscan': lambda output_type=output_type: write_alerts(scan_alerts(api_url, project_data, 'secretscan', output_type, alert_state), project_name, output_type, rep_path, call_func='secret_scan'),
+                        'dependabot': lambda output_type=output_type: write_alerts(scan_alerts(api_url, project_data, 'dependabot', output_type, alert_state), project_name, output_type, rep_path, call_func='dependabot_scan'),
                     }[alert_type]()
-            
+    
+    # The following code is intended for debugging purposes only - do not uncomment
+    # end_time = time.perf_counter()
+    # elapsed_time = end_time - start_time
+    # print(f"\nExecution time: {elapsed_time:.2f} seconds\n")
+
 if __name__ == '__main__':
     main()
