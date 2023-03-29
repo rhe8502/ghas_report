@@ -20,7 +20,16 @@
 # Project URL: https://github.com/rhe8502/ghas_report/
 
 """
-Generate encrypted API key for GitHub Advanced Security (GHAS) Vulnerability Report script.
+Generate and store an encrypted GitHub API key for the GitHub Advanced Security (GHAS)
+Vulnerability Report script.
+
+This script allows the user to store an encrypted GitHub API key in a JSON configuration file.
+The API key is encrypted using the Fernet symmetric encryption library, and the encryption key
+is stored in a separate file.
+
+If the encryption key file does not exist, a new encryption key is generated and saved. The script
+is designed to be used in conjunction with the main GHAS Vulnerability Report script, which retrieves
+the encrypted API key from the configuration file, decrypts it, and uses it to access the GitHub API.
 """
 
 from cryptography.fernet import Fernet
@@ -33,6 +42,23 @@ conf_file_name = "ghas_config.json"
 env_file_name = ".ghas_env"
 
 def load_fernet_key(script_dir):
+    """
+    Load or generate a Fernet encryption key and return a Fernet object.
+
+    This function checks if a file named `env_file_name` exists in the `script_dir` directory.
+    If the file exists, it reads the Fernet key from the file and creates a Fernet object using the key.
+    If the file doesn't exist, it generates a new Fernet key, saves it to the file, and creates a Fernet object using the new key.
+    In both cases, it returns the Fernet object.
+
+    Args:
+        script_dir (str): The directory where the script is located.
+
+    Returns:
+        Fernet: A Fernet object initialized with the encryption key.
+
+    Raises:
+        IOError: If there is an error reading from or writing to the env_file.
+    """
     env_file = os.path.join(script_dir, env_file_name)
 
     # Check if .ghas_env file exists
@@ -60,7 +86,20 @@ def load_fernet_key(script_dir):
             print(f"Error writing to {e.filename}: {e}")
             exit(1)
 
-def store_api_key(script_dir):   
+def store_api_key(script_dir):
+    """
+    Prompt the user for their GitHub API key, encrypt it, and store it in the JSON configuration file.
+
+    This function prompts the user for their GitHub API key, encrypts the key using a Fernet object,
+    and saves the encrypted key in the JSON configuration file located at `script_dir/conf_file_name`.
+    If the JSON configuration file does not exist, it creates a new one before storing the encrypted key.
+
+    Args:
+        script_dir (str): The directory where the script is located.
+
+    Raises:
+        IOError: If there is an error reading from or writing to the configuration file.
+    """
     conf_file = os.path.join(script_dir, conf_file_name)
 
     # Check if the JSON configuration file exists, if not create it
@@ -97,7 +136,18 @@ def store_api_key(script_dir):
         exit(1)
     
 def create_config(conf_file):
-    # Create a new JSON configuration file with some default values
+    """
+    Create a new JSON configuration file with default values.
+
+    This function creates a new JSON configuration file at the specified path and writes
+    a default configuration with placeholders for the user to fill in.
+
+    Args:
+        conf_file (str): The path to the configuration file.
+
+    Raises:
+        IOError: If there is an error writing to the configuration file.
+    """
     default_config = {
         "connection" : {
             "gh_api_url": "https://api.github.com",

@@ -6,3 +6,4 @@
 *-secret_scan-*.json
 *-dependabot_scan-*.json
 ghas_config.json
+notes.txt

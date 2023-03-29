@@ -22,16 +22,57 @@
 """
 GitHub Advanced Security (GHAS) Vulnerability Report
 
-The script is designed to retrieve various types of GitHub Advanced Security (GHAS) alerts
-for a specified organization or repository.
+This script retrieves various types of GitHub Advanced Security (GHAS) alerts for a specified 
+organization or repository and generates a report based on the specified options. 
 
-GHAS alerts can include code scanning alerts, secret scanning alerts, and dependabot alerts.
+The supported alert types include code scanning alerts, secret scanning alerts, and dependabot
+alerts.
 
-It will generate a report based on the specified options and write the results to a file.
-The output format of the report can also be specified using command-line options.
+The script requires a configuration file ("conf_file") and an environment file ("env_file") to 
+retrieve API credentials and settings. The API credentials are encrypted using the 
+"ghas_enc_key.py" script, which generates and stores an encrypted GitHub API key
 
-The supported formats are CSV and JSON. By default, the output is written to a CSV file.
-If the -oA option is specified, then the report will be written to all supported formats.
+Command-line arguments can be passed to specify the alert types to process and the 
+output format of the report. The supported output formats are CSV and JSON, and the 
+default output format is CSV.
+
+Functionality is provided to generate an alert count report, a code scanning alert report, a 
+secret scanning alert report, and a dependabot alert report. Alert reports can be 
+generated for open alerts only using the "-o" flag.
+
+The script uses the GitHub API to retrieve alert data and requires valid API credentials. 
+An API key can be added using the "ghas_enc_key.py" script.
+
+Usage:
+$ python script_name.py [-h] [-v] [-A] [-a] [-c] [-s] [-d] [-o] [-wA] [-wC] [-wJ]
+
+Options:
+-h, --help Show help message and exit.
+-v, --version Show program's version number and exit.
+-A, --all Generate Alert Count, Code Scanning, Secret Scanning, and Dependabot alert reports.
+-a, --alerts Generate Alert Count report of all open alerts.
+-c, --codescan Generate Code Scan alert report.
+-s, --secretscan Generate Secret Scanning alert report.
+-d, --dependabot Generate Dependabot alert report.
+-o, --open Only generate reports for open alerts (Alert Count only reports open alerts).
+-wA, --output-all Write output to all supported formats at once.
+-wC, --output-csv Write output to a CSV file (default format).
+-wJ, --output-json Write output to a JSON file.
+
+The script also includes several helper functions to retrieve and process the alert data, including:
+
+    alert_count(api_url, project_data): retrieves the total number of open alerts for a project.
+    
+    scan_alerts(api_url, project_data, alert_type, output_type, alert_state): retrieves detailed alert 
+    data for a specific alert type and returns it in the specified output format (CSV or JSON).
+
+    write_alerts(alert_data, project_name, output_type, rep_path, call_func): writes the alert data
+    to a file in the specified output format.
+
+The script uses the argparse module to parse command-line arguments and the json and os modules to 
+read data from configuration and environment files.
+
+Note: The script also contains commented-out code for measuring execution time for debugging purposes only.
 """
 
 from cryptography.fernet import Fernet, InvalidToken
@@ -47,8 +88,21 @@ import time
 conf_file_name = "ghas_config.json"
 env_file_name = ".ghas_env"
 
-# Handle API error responses
 def api_error_response(response):
+    """
+    Generate error message from API response.
+
+    Args:
+        response (requests.Response): API response object.
+
+    Returns:
+        str: Error message.
+
+    Examples:
+        >>> response = requests.get('https://api.example.com')
+        >>> api_error_response(response)
+        'Error 404: Resource not found'
+    """
     error_messages = {
         304: f"Error {response.status_code}: {response.json().get('message', 'Not modified')}" + (f", Errors: {response.json().get('errors', '')}" if response.json().get('errors') else ''),
         400: f"Error {response.status_code}: {response.json().get('message', 'Bad Request')}" + (f", Errors: {response.json().get('errors', '')}" if response.json().get('errors') else ''),
@@ -64,8 +118,21 @@ def api_error_response(response):
     else:
         raise Exception(f"Error {response.status_code}: {response.json().get('message', '')}" + (f", Errors: {response.json().get('errors', '')}" if response.json().get('errors') else ''))
 
-# Get Code Scanning alerts and alert count
 def get_code_scanning_alerts(api_url, org_name=None, owner=None, repo_name=None, state=None):
+    """
+    Fetches the code scanning alerts for a given GitHub organization or repository and optionally filters them by state.
+
+    Args:
+        api_url (str): The base API URL for the GitHub instance.
+        org_name (str, optional): The GitHub organization name. Should be provided if repo_name is not specified.
+        owner (str, optional): The GitHub username of the repository owner. Required if repo_name is provided.
+        repo_name (str, optional): The GitHub repository name. Should be provided if org_name is not specified.
+        state (str, optional): The state of the alerts to fetch. Can be "open" or None. If None, returns all alerts.
+
+    Returns:
+        tuple: A tuple containing a list of code scanning alerts and the count of open alerts.
+            If the API call fails, it will print an error message generated by the `api_error_response` function.
+    """
     base_url = f"{api_url}/repos/{owner}/{repo_name}" if repo_name else f"{api_url}/orgs/{org_name}"
     state_query = "?state=open" if state == "open" else ""
     url = f"{base_url}/code-scanning/alerts{state_query}"
@@ -79,8 +146,21 @@ def get_code_scanning_alerts(api_url, org_name=None, owner=None, repo_name=None,
     else:
         print(api_error_response(response))
 
-# Get Secret Scanning alerts and alert count
 def get_secret_scanning_alerts(api_url, org_name=None, owner=None, repo_name=None, state=None):
+    """
+    Fetches the secret scanning alerts for a given GitHub organization or repository and optionally filters them by state.
+    
+    Args:
+        api_url (str): The base API URL for the GitHub instance.
+        org_name (str, optional): The GitHub organization name. Should be provided if repo_name is not specified.
+        owner (str, optional): The GitHub username of the repository owner. Required if repo_name is provided.
+        repo_name (str, optional): The GitHub repository name. Should be provided if org_name is not specified.
+        state (str, optional): The state of the alerts to fetch. Can be "open" or None. If None, returns all alerts.
+    
+    Returns:
+        tuple: A tuple containing a list of secret scanning alerts and the count of open alerts.
+               If the API call fails, it will print an error message generated by the `api_error_response` function.
+    """
     base_url = f"{api_url}/repos/{owner}/{repo_name}" if repo_name else f"{api_url}/orgs/{org_name}"
     state_query = "?state=open" if state == "open" else ""
     url = f"{base_url}/secret-scanning/alerts{state_query}"
@@ -94,8 +174,22 @@ def get_secret_scanning_alerts(api_url, org_name=None, owner=None, repo_name=Non
     else:
         print(api_error_response(response))
  
-# Get Dependabot alerts and alert count
 def get_dependabot_alerts(api_url, org_name=None, owner=None, repo_name=None, state=None):
+    """
+    Fetches the Dependabot alerts for a given GitHub organization or repository and optionally filters them by state.
+
+    Args:
+        api_url (str): The base API URL for the GitHub instance.
+        org_name (str, optional): The GitHub organization name. Should be provided if repo_name is not specified.
+        owner (str, optional): The GitHub username of the repository owner. Required if repo_name is provided.
+        repo_name (str, optional): The GitHub repository name. Should be provided if org_name is not specified.
+        state (str, optional): The state of the alerts to fetch. Can be "open" or None. If None, returns all alerts.
+
+    Returns:
+        tuple: A tuple containing a list of Dependabot alerts and the count of open alerts.
+            If the API call fails, it will print an error message generated by the `api_error_response` function.
+    """
+
     base_url = f"{api_url}/repos/{owner}/{repo_name}" if repo_name else f"{api_url}/orgs/{org_name}"
     state_query = "?state=open" if state == "open" else ""
     url = f"{base_url}/dependabot/alerts{state_query}"
@@ -109,14 +203,30 @@ def get_dependabot_alerts(api_url, org_name=None, owner=None, repo_name=None, st
     else:
         print(api_error_response(response))
 
-# Write alerts to file
-def write_alerts(alert_data, project_name, output_type=None, rep_path="", call_func=None):    
+def write_alerts(alert_data, project_name, output_type=None, rep_path="", call_func=None):
+    """
+    Writes alert data to a file in the specified format (CSV or JSON) for a given project.
+
+    Args:
+        alert_data (dict): A dictionary containing the alert data to be written.
+        project_name (str): The name of the project.
+        output_type (str, optional): The output format for the file, either 'csv' or 'json'. Defaults to 'csv'.
+        rep_path (str, optional): The path to the directory where the file should be written. Defaults to an empty string.
+        call_func (str, optional): The type of alert data being written. Used to determine the column headers for CSV files.
+
+    Raises:
+        IOError: If there is an error writing to the file.
+    """
     # Set output type to CSV is none defined
     output_type = output_type if output_type is not None else 'csv'
 
-    # Get current date & time and generate the filename
-    filepath = os.path.join(rep_path, f"{project_name}-{call_func}-{datetime.now():%Y%m%d%H%M%S}.{output_type}")
-
+    # Check if a report path is defined and create the file path, otherwise create a folder for the current date and create the file path
+    if rep_path:
+        filepath = os.path.join(rep_path, f"{project_name}-{call_func}-{datetime.now():%Y%m%d%H%M%S}.{output_type}")
+    else:
+        filepath = os.path.join(rep_path, f"{datetime.now().strftime('%Y%m%d')}", f"{project_name}-{call_func}-{datetime.now():%Y%m%d%H%M%S}.{output_type}")
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+   
     # Set the column headers for the CSV file depending on the type of alert
     scan_options = {
         'alert_count': ['Organization', 'Repository', 'Code Scanning Alerts', 'Secret Scanning Alerts', 'Dependabot Alerts'],
@@ -141,8 +251,18 @@ def write_alerts(alert_data, project_name, output_type=None, rep_path="", call_f
         print(f"Error writing to {e.filename}: {e}")
         exit(1)
 
-# Process alert counts for each organization and repository and add them to a list (Candidate for refactoring)
-def alert_count(api_url, project_data):
+def alert_count(api_url, project_data): # Candidate for refactoring
+    """
+    Collects alert count data for the specified GitHub organizations and repositories.
+
+    Args:
+        api_url (str): The base API URL for the GitHub instance.
+        project_data (dict): A dictionary containing the organizations and repositories for which to fetch the alert count.
+
+    Returns:
+        dict: A dictionary containing the raw alert count data and the formatted alert count data.
+            The keys are "raw_alerts" and "scan_alerts", both containing a list of lists with the alert count information.
+    """
     alert_count = []
     for gh_entity in ['organizations', 'repositories']:
         for gh_name in project_data.get(gh_entity, []):
@@ -157,8 +277,18 @@ def alert_count(api_url, project_data):
                     print(f"Error getting alert count for {'repository' if gh_entity == 'repositories' else 'organization'}: {gh_name} - {e}")
     return {"raw_alerts": alert_count, "scan_alerts": alert_count}
 
-# Helper function to avoid nonetype errors
 def safe_get(alert, keys, default=""):
+    """
+    Safely retrieves the value from a nested dictionary using a list of keys.
+
+    Args:
+        alert (dict): The dictionary from which to retrieve the value.
+        keys (list): A list of keys to traverse the dictionary.
+        default (any, optional): The default value to return if any of the keys are not found. Defaults to an empty string.
+
+    Returns:
+        any: The value found in the dictionary using the provided keys, or the default value if any of the keys are not found.
+    """
     result = alert
     for key in keys:
         if result:
@@ -167,8 +297,20 @@ def safe_get(alert, keys, default=""):
             break
     return default if result is None else result
 
-# Process alerts for each organization and repository
 def scan_alerts(api_url, project_data, alert_type, output_type=None ,state=None):
+    """
+    Retrieve and process security alerts from GitHub for a list of organizations and/or repositories.
+
+    Args:
+        api_url (str): The base GitHub API URL.
+        project_data (dict): A dictionary containing lists of organizations and/or repositories to retrieve alerts from.
+        alert_type (str): The type of alert to retrieve (codescan, secretscan, or dependabot).
+        output_type (str, optional): The output format for the results (json or csv). Defaults to None.
+        state (str, optional): The state of the alerts to retrieve (open or closed). Defaults to None.
+
+    Returns:
+        dict: A dictionary containing raw alerts and processed alerts for the specified alert type.
+    """
     raw_alerts = []
     scan_alerts = []
 
@@ -187,7 +329,7 @@ def scan_alerts(api_url, project_data, alert_type, output_type=None ,state=None)
                     owner = project_data.get('owner') if gh_entity == 'repositories' else None
                     alerts = alert_functions[alert_type](api_url, owner=owner, org_name=gh_name, state=state if gh_entity == 'organizations' else None, repo_name=gh_name if gh_entity == 'repositories' else None)[0]
 
-                    # If the output type is json just return the raw alerts and ignore the rest of the function
+                    # If the output type is json return the raw alerts and ignore the rest of the function
                     if output_type == 'json':
                         raw_alerts = alerts
                         return({"raw_alerts": raw_alerts})
