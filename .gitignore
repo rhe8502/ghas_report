@@ -1,10 +1,5 @@
 .venv
 .ghas_env
-*.csv
-*-alert_count-*.json
-*-code_scan-*.json
-*-secret_scan-*.json
-*-dependabot_scan-*.json
 ghas_config.json
 notes.txt
 2023*
