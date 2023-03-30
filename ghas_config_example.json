@@ -9,7 +9,7 @@
         "key_file": ""
     },
     "projects": {
-        "Project1": {
+        "YOUR_PROJECT1": {
             "owner": "GITHUB_OWNER",
             "organizations": [
                 "ORG1"
@@ -19,7 +19,7 @@
                 "REPO2"
             ]
         },
-        "Project2": {
+        "YOUR_PROJECT2": {
             "owner": "GITHUB_OWNER",
             "organizations": [
                 "ORG1",
