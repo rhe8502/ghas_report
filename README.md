@@ -4,7 +4,7 @@ The **"ghas_config.json"** JSON configuration file is used to specify connection
 
 ### Connection section
 ``` json
- {
+{
   "connection": {
     "gh_api_url": "https://api.github.com",
     "gh_api_key": "YOUR_GITHUB_API_KEY",
