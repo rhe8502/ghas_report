@@ -4,11 +4,13 @@ The **"ghas_config.json"** JSON configuration file is used to specify connection
 
 ### Connection section
 ``` json
- "connection": {
-        "gh_api_url": "https://api.github.com",
-        "gh_api_key": "GITHUB_API_KEY",
-        "gh_api_version": "2022-11-28"
-    }
+ {
+  "connection": {
+    "gh_api_url": "https://api.github.com",
+    "gh_api_key": "YOUR_GITHUB_API_KEY",
+    "gh_api_version": "2022-11-28"
+  }
+}
 ```
 
 This section specifies the details for connecting to the GitHub API.
@@ -18,10 +20,12 @@ This section specifies the details for connecting to the GitHub API.
 
 ### Location section
 ``` json
-"location": {
-        "reports": "",
-        "key_file": ""
-    }
+{
+  "location": {
+    "reports": "example_report.txt",
+    "key_file": "example_key.txt"
+  }
+}
 ```
 
 This section specifies the location of the reports and the encryption key file.
@@ -31,28 +35,30 @@ This section specifies the location of the reports and the encryption key file.
 
 ### Projects section
 ``` json
-"projects": {
-        "YOUR_PROJECT1": {
-            "owner": "GITHUB_OWNER",
-            "organizations": [
-                "ORG1"
-            ],
-            "repositories": [
-                "REPO1",
-                "REPO2"
-            ]
-        },
-        "YOUR_PROJECT2": {
-            "owner": "GITHUB_OWNER",
-            "organizations": [
-                "ORG1",
-                "ORG2"
-            ],
-            "repositories": [
-                "REPO1"
-            ]
-        }
-    }
+{
+  "projects": {
+    "YOUR_PROJECT1": {
+      "owner": "GITHUB_OWNER",
+      "organizations": [
+        "ORG1"
+      ],
+      "repositories": [
+        "REPO1",
+        "REPO2"
+      ]
+    },
+    "YOUR_PROJECT2": {
+      "owner": "GITHUB_OWNER",
+      "organizations": [
+        "ORG1",
+        "ORG2"
+      ],
+      "repositories": [
+        "REPO1"
+      ]
+    }
+  }
+}
 ```
 
 This section specifies the project information, including the owner, organizations, and repositories.
