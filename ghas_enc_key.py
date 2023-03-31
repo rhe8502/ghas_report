@@ -20,16 +20,31 @@
 # Project URL: https://github.com/rhe8502/ghas_report/
 
 """
-Generate and store an encrypted GitHub API key for the GitHub Advanced Security (GHAS)
-Vulnerability Report script.
+GHAS Reporting Setup Tool
 
-This script allows the user to store an encrypted GitHub API key in a JSON configuration file.
-The API key is encrypted using the Fernet symmetric encryption library, and the encryption key
-is stored in a separate file.
+This script is a command-line utility that allows users to store their GitHub API key securely
+in a JSON configuration file for use with the GitHub Advanced Security (GHAS) Vulnerability
+Report script. The script provides options for specifying custom locations for the configuration
+file, the encryption key file, and the reports directory.
 
-If the encryption key file does not exist, a new encryption key is generated and saved. The script
-is designed to be used in conjunction with the main GHAS Vulnerability Report script, which retrieves
-the encrypted API key from the configuration file, decrypts it, and uses it to access the GitHub API.
+The script uses the argparse module to parse command-line arguments and offers a help message
+with information about the available options.
+
+Usage:
+    python setup.py [-h] [-v] [-a] [-lc <PATH>] [-lk <PATH>] [-lr <PATH>]
+
+Options:
+    -h, --help      Show this help message and exit.
+    -v, --version   Show program's version number and exit.
+    -a, --api-key   Prompt for a GitHub API key; replaces existing GitHub API key, or generate a
+                    new config & key file if none exist (first-time setup).
+    -lc, --config   Specify file location for the "ghas_report.py" configuration file
+                    ("ghas_conf.json").
+    -lk, --keyfile  Specify file location for the "ghas_report.py" encryption key file (".ghas_env").
+    -lr, --reports  Specify file location for the "ghas_report.py" reports directory.
+
+Example:
+    python setup.py -a -lc /path/to/config -lk /path/to/keyfile -lr /path/to/reports
 """
 
 from cryptography.fernet import Fernet
@@ -42,72 +57,75 @@ import os
 conf_file_name = "ghas_config.json"
 env_file_name = ".ghas_env"
 
-def load_fernet_key(script_dir):
+def enc_key(key_file):
     """
-    Load or generate a Fernet encryption key and return a Fernet object.
+    Generates or loads a Fernet encryption key from the given key_file.
 
-    This function checks if a file named `env_file_name` exists in the `script_dir` directory.
-    If the file exists, it reads the Fernet key from the file and creates a Fernet object using the key.
-    If the file doesn't exist, it generates a new Fernet key, saves it to the file, and creates a Fernet object using the new key.
-    In both cases, it returns the Fernet object.
+    If the specified key_file does not exist or the user chooses to overwrite it,
+    a new Fernet encryption key will be generated, saved to key_file, and returned.
+    If the key_file exists and the user chooses not to overwrite it,
+    the existing key will be loaded from the key_file and returned.
 
     Args:
-        script_dir (str): The directory where the script is located.
+        key_file (str): The path to the key file.
 
     Returns:
         Fernet: A Fernet object initialized with the encryption key.
 
     Raises:
-        IOError: If there is an error reading from or writing to the env_file.
+        SystemExit: If there is an error reading or writing the key file.
     """
-    env_file = os.path.join(script_dir, env_file_name)
-
-    # Check if .ghas_env file exists
-    if os.path.exists(env_file):
-        # If file exists, load the encryption key from the file
-        try:
-            with open(env_file, "rb") as f:
-                key = f.read()
-            print(f"Using encryption key from \"{env_file}\". If you want to generate a new encryption key delete \"{env_file_name}\" and re-run the script.")
-            return Fernet(key)
-        except IOError as e:
-            raise SystemExit(f"Error reading from {e.filename}: {e}")
-    else:
-        # If file doesn't exist, generate a new encryption key and save it to the file
+    if not os.path.exists(key_file) or input(f"\nEncryption key file exists at {key_file}. Overwrite and generate a new key? (y/n): ").lower() == "y":
         key = Fernet.generate_key()
         try:
-            with open(env_file, "wb") as f:
+            with open(key_file, "wb") as f:
                 f.write(key)
-            # Set the permissions to read and write for the owner only
-            os.chmod(env_file, 0o600)
-            print(f"New key generated and saved to {env_file}")
-            return Fernet(key)
+            os.chmod(key_file, 0o600)
+            print(f"New key generated and saved to {key_file}\n")
         except IOError as e:
             raise SystemExit(f"Error writing to {e.filename}: {e}")
+    else:
+        try:
+            with open(key_file, "rb") as f:
+                key = f.read()
+            print(f"Using encryption key from \"{key_file}\".\n")
+        except IOError as e:
+            raise SystemExit(f"Error reading from {e.filename}: {e}")
+    return Fernet(key)
 
-def store_api_key(script_dir):
+def store_api_key(config_file, key_file, script_dir, report_dir):
     """
-    Prompt the user for their GitHub API key, encrypt it, and store it in the JSON configuration file.
-
-    This function prompts the user for their GitHub API key, encrypts the key using a Fernet object,
-    and saves the encrypted key in the JSON configuration file located at `script_dir/conf_file_name`.
-    If the JSON configuration file does not exist, it creates a new one before storing the encrypted key.
+    Stores the user's GitHub API key in an encrypted form inside a configuration file.
+    If the configuration file already exists, prompts the user to overwrite the file, add the API key to the existing
+    file, or cancel the process. If the file doesn't exist, a new configuration file is created.
 
     Args:
-        script_dir (str): The directory where the script is located.
+        config_file (str): The path to the configuration file.
+        key_file (str): The path to the encryption key file.
+        script_dir (str): The path to the script directory.
+        report_dir (str): The path to the report directory.
 
     Raises:
-        IOError: If there is an error reading from or writing to the configuration file.
+        SystemExit: If there is an error reading or writing the configuration file or the key file.
     """
-    conf_file = os.path.join(script_dir, conf_file_name)
-
-    # Check if the JSON configuration file exists, if not create it
-    if not os.path.exists(conf_file):
-        print(f"{conf_file} file not found, creating new file.")
-        create_config(conf_file)
+    if os.path.exists(config_file):
+        while True:
+            choice = input(f"Configuration file already exists at {config_file}.\nChoose an action: (O)verwrite the file, (A)dd the API key to the existing file, or (C)ancel (O/A/C): ").lower()
+            if choice == "a":
+                break
+            elif choice == "o":
+                create_config(config_file)
+                break
+            elif choice == "c":
+                print("Exiting.")
+                exit()
+            else:
+                print("\nInvalid choice. Try again.\n")
+    else:
+        create_config(config_file)
 
     # Load the Fernet encryption key
-    fernet_key = load_fernet_key(script_dir)
+    fernet_key = enc_key(key_file)
 
     # Prompt user for the GitHub API key
     print("\nNote: For security reasons, your GitHub API key will not be displayed as you type.")
@@ -118,21 +136,30 @@ def store_api_key(script_dir):
 
     # Load the JSON configuration file and store the encrypted GitHub API key
     try:
-        with open(conf_file, "r") as f:
+        with open(config_file, "r") as f:
             config = json.load(f)
     except (FileNotFoundError, json.JSONDecodeError) as e:
         raise SystemExit(f"Error reading from {e.filename}: {e}")
     
-    print(f"\nNew API key stored in {conf_file}\n")
+    # Store the encrypted API key in config
     config["connection"]["gh_api_key"] = enc_api_key.decode()
 
+    # Set the report directory and key file directory and store in config
+    config["location"]["reports"] = report_dir if report_dir else ""
+    config["location"]["keyfile"] = "" if os.path.dirname(key_file) == script_dir else os.path.dirname(key_file)
+      
     try:
-        with open(conf_file, "w") as f:
+        with open(config_file, "w") as f:
             json.dump(config, f, indent=4)
+        print(f"\nNew API key stored in {config_file}")
+        if report_dir:
+            print(f"Report directory set to {report_dir}")
+        if os.path.dirname(key_file) != script_dir:
+            print(f"Keyfile directory set to {os.path.dirname(key_file)}\n")
     except IOError as e:
         raise SystemExit(f"Error writing to {e.filename}: {e}")
     
-def create_config(conf_file):
+def create_config(config_file):
     """
     Create a new JSON configuration file with default values.
 
@@ -153,24 +180,22 @@ def create_config(conf_file):
         },
         "location": {
             "reports": "",
-            "key_file": ""
+            "keyfile": ""
         },
         "projects": {
             "YOUR_PROJECT_NAME": {
                 "owner": "GITHUB_OWNER",
                 "organizations": [
-                        "ORG1",
-                        "ORG2"
+                        "ORG"
                 ],
                 "repositories": [
-                        "REPO1",
-                        "REPO2"
+                        "REPO1"
                 ]
             }
         }
     }
     try:
-        with open(conf_file, "w") as f:
+        with open(config_file, "w") as f:
             json.dump(default_config, f, indent=4)
     except IOError as e:
         raise SystemExit(f"Error writing to {e.filename}: {e}")
@@ -180,24 +205,44 @@ def main():
     version_number = "1.0.0"
     release_date = "2023-03-30"
     url = "https://github.com/rhe8502/ghas_report"
-
+    
     # version string
     version_string = f"GHAS Reporting Setup Tool v{version_number} ({url})\nRelease Date: {release_date}\n"
 
     # Command-line arguments parser
-    parser = argparse.ArgumentParser(description='''
-Generate and store an encrypted GitHub API key for the GitHub Advanced Security (GHAS) Vulnerability Report script.
-    ''', formatter_class=argparse.RawTextHelpFormatter)
+    parser = argparse.ArgumentParser(description='Store a GitHub API key for the GitHub Advanced Security (GHAS) Vulnerability Report script securely in a JSON configuration file.')
 
-    #Options group
+    # Options group
     parser.add_argument('-v', '--version', action='version', version=(version_string), help="show program's version number and exit")
+
+    # Setup group
+    setup_group = parser.add_argument_group('Store GitHub API key')
+    setup_group.add_argument('-a', '--api-key', action='store_true', help='prompt for a GitHub API key; replaces existing GitHub API key, or generate a new config & key file if none exist (first-time setup)')
+    
+    # Optional location arguments
+    location_options_group = parser.add_argument_group('Optional file location arguments')
+    location_options_group.add_argument('-lc', '--config', metavar='<PATH>', type=str, help='specify file location for the "ghas_report.py" configuration file ("ghas_conf.json")')
+    location_options_group.add_argument('-lk', '--keyfile', metavar='<PATH>', type=str, help='specify file location for the "ghas_report.py" encryption key file (".ghas_env")')
+    location_options_group.add_argument('-lr', '--reports', metavar='<PATH>', type=str, help='specify file location for the "ghas_report.py" reports directory')
 
     # Parse the arguments
     args = parser.parse_args()
-    
+
+    # If --api-key is not specified, print the help message and exit.
+    if not args.api_key:
+        print("No arguments specified. Use -h or --help for help.")
+        parser.print_help()
+
     # Determine script location
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    store_api_key(script_dir)
+    
+    # Joins the script directory, or specified file path (-lc, -lk), with the default configuration file name.
+    config_file = os.path.join(args.config, conf_file_name) if args.config else os.path.join(script_dir, conf_file_name)
+    key_file = os.path.join(args.keyfile, env_file_name) if args.keyfile else os.path.join(script_dir, env_file_name)
+    report_dir = os.path.join(args.reports) if args.reports else ""
 
+    if args.api_key:
+        store_api_key(config_file, key_file, script_dir, report_dir)
+ 
 if __name__ == '__main__':
     main()
