@@ -6,7 +6,7 @@
     },
     "location": {
         "reports": "",
-        "key_file": ""
+        "keyfile": ""
     },
     "projects": {
         "YOUR_PROJECT1": {
