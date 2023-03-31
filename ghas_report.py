@@ -429,7 +429,7 @@ def main():
     api_key = config.get('connection', {}).get('gh_api_key')
     api_version = config.get('connection', {}).get('gh_api_version')
     rep_path = config.get('location', {}).get('reports')
-    enc_path = config.get('location', {}).get('key_file')
+    enc_path = config.get('location', {}).get('keyfile')
     
     if not api_key:
         raise SystemExit(f"Error: No API key found in \"{conf_file}\". Please run the \"ghas_enc_key.py\" script to add your API key.")
