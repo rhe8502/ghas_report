@@ -66,7 +66,7 @@ The script also includes several helper functions to retrieve and process the al
     scan_alerts(api_url, project_data, alert_type, output_type, alert_state): retrieves detailed alert 
     data for a specific alert type and returns it in the specified output format (CSV or JSON).
 
-    write_alerts(alert_data, project_name, output_type, rep_path, call_func): writes the alert data
+    write_alerts(alert_data, project_name, output_type, report_dir, call_func): writes the alert data
     to a file in the specified output format.
 
 The script uses the argparse module to parse command-line arguments and the json and os modules to 
@@ -202,7 +202,7 @@ def get_dependabot_alerts(api_url, org_name=None, owner=None, repo_name=None, st
     else:
         print(api_error_response(response))
 
-def write_alerts(alert_data, project_name, output_type=None, rep_path="", call_func=None):
+def write_alerts(alert_data, project_name, output_type=None, report_dir="", call_func=None):
     """
     Writes alert data to a file in the specified format (CSV or JSON) for a given project.
 
@@ -210,7 +210,7 @@ def write_alerts(alert_data, project_name, output_type=None, rep_path="", call_f
         alert_data (dict): A dictionary containing the alert data to be written.
         project_name (str): The name of the project.
         output_type (str, optional): The output format for the file, either 'csv' or 'json'. Defaults to 'csv'.
-        rep_path (str, optional): The path to the directory where the file should be written. Defaults to an empty string.
+        report_dir (str, optional): The path to the directory where the file should be written. Defaults to an empty string.
         call_func (str, optional): The type of alert data being written. Used to determine the column headers for CSV files.
 
     Raises:
@@ -220,10 +220,10 @@ def write_alerts(alert_data, project_name, output_type=None, rep_path="", call_f
     output_type = output_type if output_type is not None else 'csv'
     
     # Check if a report path is defined and create the file path, otherwise create a folder for the current date and create the file path
-    if rep_path:
-        filepath = os.path.join(rep_path, f"{project_name}-{call_func}-{datetime.now():%Y%m%d%H%M%S}.{output_type}")
+    if report_dir:
+        filepath = os.path.join(report_dir, f"{project_name}-{call_func}-{datetime.now():%Y%m%d%H%M%S}.{output_type}")
     else:
-        filepath = os.path.join(rep_path, f"{datetime.now().strftime('%Y%m%d')}", f"{project_name}-{call_func}-{datetime.now():%Y%m%d%H%M%S}.{output_type}")
+        filepath = os.path.join(report_dir, f"{datetime.now().strftime('%Y%m%d')}", f"{project_name}-{call_func}-{datetime.now():%Y%m%d%H%M%S}.{output_type}")
     
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
    
@@ -401,6 +401,61 @@ def scan_alerts(api_url, project_data, alert_type, output_type=None ,state=None)
                     print(f"Error getting {alert_type} alerts for {'repository' if gh_entity == 'repositories' else 'organization'}: {gh_name} - {e}")
     return {"raw_alerts": raw_alerts, "scan_alerts": scan_alerts}
 
+def load_configuration(args):
+    # Determine script location
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    # Check if a commandline argument was passed for the config file, and if so, use that instead of the default
+    conf_file = os.path.join(args.config, conf_file_name) if args.config else os.path.join(script_dir, conf_file_name)
+   
+    try:
+        with open(conf_file) as f:
+            config = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        raise SystemExit(f"Error loading {conf_file}: {e}\nYou might need to run the \"ghas_enc_key.py\" script first to generate a new \"{conf_file}\" file.")
+
+    # Get API URL and API key from config    
+    api_url = config.get('connection', {}).get('gh_api_url')
+    api_key = config.get('connection', {}).get('gh_api_key')
+    api_version = config.get('connection', {}).get('gh_api_version')
+    report_dir = config.get('location', {}).get('reports')
+    enc_path = config.get('location', {}).get('keyfile')
+ 
+    #Check if a commandline argument was passed for the keyfile, if not, check if the keyfile path was specified in the config file, and if not, use the default
+    if args.keyfile:
+        env_file = os.path.join(args.keyfile, env_file_name)
+    elif enc_path:
+        env_file = os.path.join(enc_path, env_file_name)
+    else:
+        env_file = os.path.join(script_dir, env_file_name)
+    
+    if not api_key:
+        raise SystemExit(f"Error: No API key found in \"{conf_file}\". Please run the \"ghas_enc_key.py\" script to add your API key.")
+
+    try:
+        with open(env_file, "rb") as f:
+            f_key = f.read()
+    except FileNotFoundError as e:
+        raise SystemExit(f"Error loading {e.filename}: {e}\nYou might need to run the \"ghas_enc_key.py\" script first to generate a new \"{e.filename}\" file.")
+    
+    try:
+        fernet = Fernet(f_key)
+        api_key = fernet.decrypt(api_key.encode()).decode()
+    except Exception :
+        raise SystemExit("Error: Invalid key, your API key might be corrupted. Please run the \"ghas_enc_key.py\" script to encrypt the API key.") 
+
+    # Define headers for API requests to GitHub
+    headers = {
+        "Authorization": f"token {api_key}",
+        "X-GitHub-Api-Version": f"{api_version}"
+    }
+
+    return {
+        "config": config,
+        "headers": headers,
+        "api_url": api_url,
+        "report_dir": report_dir,
+    }
+
 def main():
     # The following line is intended for debugging purposes only - do not uncomment 
     # start_time = time.perf_counter()
@@ -413,50 +468,6 @@ def main():
     # version string
     version_string = f"GHAS Reporting Tool v{version_number} ({url})\nRelease Date: {release_date}\n"
 
-    # Determine script location
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    conf_file = os.path.join(script_dir, conf_file_name)
-    env_file = os.path.join(script_dir, env_file_name)
-
-    try:
-        with open(conf_file) as f:
-            config = json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError) as e:
-        raise SystemExit(f"Error loading {conf_file}: {e}\nYou might need to run the \"ghas_enc_key.py\" script first to generate a new \"{conf_file}\" file.")
-
-    # Get API URL and API key from config    
-    api_url = config.get('connection', {}).get('gh_api_url')
-    api_key = config.get('connection', {}).get('gh_api_key')
-    api_version = config.get('connection', {}).get('gh_api_version')
-    rep_path = config.get('location', {}).get('reports')
-    enc_path = config.get('location', {}).get('keyfile')
-    
-    if not api_key:
-        raise SystemExit(f"Error: No API key found in \"{conf_file}\". Please run the \"ghas_enc_key.py\" script to add your API key.")
-
-    # Check if a custom path for the key file is specified in the config file, if not use the default path
-    env_file = os.path.join(enc_path, env_file_name) if env_file else os.path.join(script_dir, env_file_name)
-
-    try:
-        with open(env_file, "rb") as f:
-                f_key = f.read()
-    except FileNotFoundError as e:
-        raise SystemExit(f"Error loading {e.filename}: {e}\nYou might need to run the \"ghas_enc_key.py\" script first to generate a new \"{e.filename}\" file.")
-
-    fernet = Fernet(f_key)
-
-    try:
-        api_key = fernet.decrypt(api_key.encode()).decode()
-    except InvalidToken:
-        raise SystemExit("Error: Invalid token, your API key might be corrupted. Please run the \"ghas_enc_key.py\" script to encrypt the API key.") 
-
-    # Define headers for API requests to GitHub as global variable
-    global headers
-    headers = {
-        "Authorization": f"token {api_key}",
-        "X-GitHub-Api-Version": f"{api_version}"
-    }
-    
     # Command-line arguments parser
     parser = argparse.ArgumentParser(description='''
 The script is designed to retrieve various types of GitHub Advanced Security (GHAS) alerts for a specified organization or repository. GHAS alerts can include code scanning alerts, secret scanning alerts, and Dependabot alerts.
@@ -484,14 +495,19 @@ It will generate a report based on the specified options and write the results t
     output_group.add_argument('-wA', '--output-all', action='store_true', help='write output to all formats at once')
     output_group.add_argument('-wC', '--output-csv', action='store_true', help='write output to a CSV file (default format)')
     output_group.add_argument('-wJ', '--output-json', action='store_true', help='write output to a JSON file')
-    
+
+    # Optional location arguments
+    location_options_group = parser.add_argument_group('Optional location arguments')
+    location_options_group.add_argument('-lc', '--config', metavar='<PATH>', type=str, help='specify file location for the configuration file ("ghas_conf.json")')
+    location_options_group.add_argument('-lk', '--keyfile', metavar='<PATH>', type=str, help='specify file location for the encryption key file (".ghas_env") - overrides the location specified in the configuration file')
+    location_options_group.add_argument('-lr', '--reports', metavar='<PATH>', type=str, help='specify file location for the reports directory - overrides the location specified in the configuration file')
+
     # Parse the arguments
     args = parser.parse_args()
 
     # Check if --output-all is used together with --output-csv or --output-json and exit if it is
     if args.output_all and (args.output_csv or args.output_json):
         raise SystemExit("Error: --output-all cannot be used together with --output-csv or --output-json")
-
 
     # Define the list of alert types to process. If the -A flag is present, include all alert types. Otherwise, include only the alert types that were passed as arguments
     alert_types = ['alerts', 'codescan', 'secretscan', 'dependabot'] if args.all else [alert_type for alert_type in ['alerts', 'codescan', 'secretscan', 'dependabot'] if getattr(args, alert_type)]
@@ -501,6 +517,18 @@ It will generate a report based on the specified options and write the results t
 
     # Set state to 'open' if the -o flag is present
     alert_state = 'open' if args.open else ''
+
+    # Load the configuration file and environment variables
+    loaded_config = load_configuration(args)
+    config = loaded_config["config"]
+    
+    global headers
+    headers = loaded_config["headers"]
+    api_url = loaded_config["api_url"]
+    report_dir = loaded_config["report_dir"]
+
+    # If the -lr flag is present, use the specified path for the reports directory. Otherwise, use the path specified in the configuration file
+    report_dir = args.reports if args.reports else config.get('reports_path', '')
 
     # If no alert type is specified, print the help message, otherwise, process the alert types that were specified as arguments
     if not alert_types:
@@ -512,10 +540,10 @@ It will generate a report based on the specified options and write the results t
             for alert_type in alert_types:
                 for output_type in output_types:
                     {
-                        'alerts': lambda: write_alerts(alert_count(api_url, project_data), project_name, output_type, rep_path, call_func='alert_count'),
-                        'codescan': lambda output_type=output_type: write_alerts(scan_alerts(api_url, project_data, 'codescan', output_type, alert_state), project_name, output_type, rep_path, call_func='code_scan'),
-                        'secretscan': lambda output_type=output_type: write_alerts(scan_alerts(api_url, project_data, 'secretscan', output_type, alert_state), project_name, output_type, rep_path, call_func='secret_scan'),
-                        'dependabot': lambda output_type=output_type: write_alerts(scan_alerts(api_url, project_data, 'dependabot', output_type, alert_state), project_name, output_type, rep_path, call_func='dependabot_scan'),
+                        'alerts': lambda: write_alerts(alert_count(api_url, project_data), project_name, output_type, report_dir, call_func='alert_count'),
+                        'codescan': lambda output_type=output_type: write_alerts(scan_alerts(api_url, project_data, 'codescan', output_type, alert_state), project_name, output_type, report_dir, call_func='code_scan'),
+                        'secretscan': lambda output_type=output_type: write_alerts(scan_alerts(api_url, project_data, 'secretscan', output_type, alert_state), project_name, output_type, report_dir, call_func='secret_scan'),
+                        'dependabot': lambda output_type=output_type: write_alerts(scan_alerts(api_url, project_data, 'dependabot', output_type, alert_state), project_name, output_type, report_dir, call_func='dependabot_scan'),
                     }[alert_type]()
     
     # The following code is intended for debugging purposes only - do not uncomment
