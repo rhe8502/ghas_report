@@ -220,7 +220,7 @@ def main():
     setup_group.add_argument('-a', '--api-key', action='store_true', help='prompt for a GitHub API key; replaces existing GitHub API key, or generate a new config & key file if none exist (first-time setup)')
     
     # Optional location arguments
-    location_options_group = parser.add_argument_group('Optional file location arguments')
+    location_options_group = parser.add_argument_group('Optional location arguments')
     location_options_group.add_argument('-lc', '--config', metavar='<PATH>', type=str, help='specify file location for the "ghas_report.py" configuration file ("ghas_conf.json")')
     location_options_group.add_argument('-lk', '--keyfile', metavar='<PATH>', type=str, help='specify file location for the "ghas_report.py" encryption key file (".ghas_env")')
     location_options_group.add_argument('-lr', '--reports', metavar='<PATH>', type=str, help='specify file location for the "ghas_report.py" reports directory')
