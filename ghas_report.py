@@ -140,8 +140,24 @@ def get_code_scanning_alerts(api_url, org_name=None, owner=None, repo_name=None,
 
     if response.status_code == 200:
         code_scanning_alerts = response.json()
-        code_scanning_alert_count = sum(1 for alert in code_scanning_alerts if alert['state'] == 'open')
-        return code_scanning_alerts, code_scanning_alert_count
+        open_alert_count = 0
+        severity_counts = {
+            'critical': 0,
+            'high': 0,
+            'medium': 0,
+            'low': 0
+        }
+
+        for alert in code_scanning_alerts:
+            if alert['state'] == 'open':
+                open_alert_count += 1
+                severity = alert['rule']['security_severity_level'].lower()
+                if severity in severity_counts:
+                    severity_counts[severity] += 1
+        severity_counts['total'] = open_alert_count 
+        print(severity_counts)
+
+        return code_scanning_alerts, severity_counts
     else:
         print(api_error_response(response))
 
@@ -194,8 +210,24 @@ def get_dependabot_alerts(api_url, org_name=None, owner=None, repo_name=None, st
 
     if response.status_code == 200:
         dependabot_alerts = response.json()
-        dependabot_alert_count = sum(1 for alert in dependabot_alerts if alert['state'] == 'open')
-        return dependabot_alerts, dependabot_alert_count
+        open_alert_count = 0
+        severity_counts = {
+            'critical': 0,
+            'high': 0,
+            'medium': 0,
+            'low': 0
+        }
+        
+        for alert in dependabot_alerts:
+            if alert['state'] == 'open':
+                open_alert_count += 1
+                severity = alert['security_advisory']['severity'].lower()
+                if severity in severity_counts:
+                    severity_counts[severity] += 1
+        severity_counts['total'] = open_alert_count
+        print(severity_counts)
+        
+        return dependabot_alerts, severity_counts
     else:
         print(api_error_response(response))
 
@@ -271,6 +303,34 @@ def alert_count(api_url, project_data): # Candidate for refactoring
                     print(f"Error getting alert count for {'repository' if gh_entity == 'repositories' else 'organization'}: {gh_name} - {e}")
     
     return {'raw_alerts': alert_count, 'scan_alerts': alert_count}
+
+'''
+def alert_count(api_url, project_data): # Candidate for refactoring
+    """Collects alert count data for the specified GitHub organizations and repositories.
+
+    Args:
+        api_url (str): The base API URL for the GitHub instance.
+        project_data (dict): A dictionary containing the organizations and repositories for which to fetch the alert count.
+
+    Returns:
+        dict: A dictionary containing the raw alert count data and the formatted alert count data.
+            The keys are "raw_alerts" and "scan_alerts", both containing a list of lists with the alert count information.
+    """
+    alert_count = []
+    for gh_entity in ['organizations', 'repositories']:
+        for gh_name in project_data.get(gh_entity, []):
+            if gh_name:
+                try:
+                    if gh_entity == 'organizations':
+                        alert_count.append([gh_name, 'N/A', get_code_scanning_alerts(api_url, org_name=gh_name)[1], get_secret_scanning_alerts(api_url, org_name=gh_name)[1], get_dependabot_alerts(api_url, org_name=gh_name)[1]])
+                    elif gh_entity == 'repositories':
+                        owner = project_data.get('owner')
+                        alert_count.append(['N/A', gh_name, get_code_scanning_alerts(api_url, owner=owner, repo_name=gh_name)[1], get_secret_scanning_alerts(api_url, owner=owner, repo_name=gh_name)[1], get_dependabot_alerts(api_url, owner=owner, repo_name=gh_name)[1]])
+                except Exception as e:
+                    print(f"Error getting alert count for {'repository' if gh_entity == 'repositories' else 'organization'}: {gh_name} - {e}")
+    
+    return {'raw_alerts': alert_count, 'scan_alerts': alert_count}
+'''
 
 def safe_get(alert, keys, default=''):
     """Safely retrieves the value from a nested dictionary using a list of keys.
