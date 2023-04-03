@@ -3,3 +3,4 @@ ghas_config.json
 .venv
 .ghas_env
 .*
+reports
