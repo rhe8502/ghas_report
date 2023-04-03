@@ -470,7 +470,7 @@ def load_configuration(args):
     # Define headers for API requests to GitHub
     headers = {
         "Authorization": f"token {api_key}",
-        "X-GitHub-Api-Version": "2022-11-28"
+        "X-GitHub-Api-Version": "2022-11-28" # API version number, see https://docs.github.com/en/rest/overview/api-versions
     }
     return config, headers
 
@@ -561,9 +561,9 @@ def process_args(parser):
     return args, alert_types, output_types, alert_state
 
 def main():
-    # The following line is intended for performance measuring purposes only - do not uncomment
+    # Start the timer to measure the script's execution time
     start_time = time.perf_counter()
-    
+
     parser = setup_argparse()
     args, alert_types, output_types, alert_state = process_args(parser)
 
@@ -584,10 +584,11 @@ def main():
                     'dependabot': lambda output_type=output_type: write_alerts(scan_alerts(api_url, project_data, 'dependabot', output_type, alert_state), project_name, output_type, report_dir, call_func='dependabot_scan'),
                 }[alert_type]()
     
-    # The following code is intended for performance measuring purposes only - do not uncomment
+    # End the timer and print the script's execution time
     end_time = time.perf_counter()
     elapsed_time = end_time - start_time
-    print(f"\nExecution time: {elapsed_time:.2f} seconds\n")
+    min, sec = divmod(elapsed_time, 60)
+    print(f"\nScript execution time: {elapsed_time:.2f} seconds\n") if elapsed_time < 60 else print(f"\nScript execution time: {int(min):02d}:{int(sec):02d} minutes\n")
 
 if __name__ == '__main__':
     main()
