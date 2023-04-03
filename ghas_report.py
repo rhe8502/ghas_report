@@ -561,8 +561,8 @@ def process_args(parser):
     return args, alert_types, output_types, alert_state
 
 def main():
-    # The following line is intended for debugging purposes only - do not uncomment 
-    # start_time = time.perf_counter()
+    # The following line is intended for performance measuring purposes only - do not uncomment
+    start_time = time.perf_counter()
     
     parser = setup_argparse()
     args, alert_types, output_types, alert_state = process_args(parser)
@@ -584,10 +584,10 @@ def main():
                     'dependabot': lambda output_type=output_type: write_alerts(scan_alerts(api_url, project_data, 'dependabot', output_type, alert_state), project_name, output_type, report_dir, call_func='dependabot_scan'),
                 }[alert_type]()
     
-    # The following code is intended for debugging purposes only - do not uncomment
-    # end_time = time.perf_counter()
-    # elapsed_time = end_time - start_time
-    # print(f"\nExecution time: {elapsed_time:.2f} seconds\n")
+    # The following code is intended for performance measuring purposes only - do not uncomment
+    end_time = time.perf_counter()
+    elapsed_time = end_time - start_time
+    print(f"\nExecution time: {elapsed_time:.2f} seconds\n")
 
 if __name__ == '__main__':
     main()
