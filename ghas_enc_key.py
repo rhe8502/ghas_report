@@ -12,7 +12,7 @@ The script uses the argparse module to parse command-line arguments and offers a
 with information about the available options.
 
 Usage:
-    python setup.py [-h] [-v] [-a] [-lc <PATH>] [-lk <PATH>] [-lr <PATH>]
+    python ghas_enc_key.py [-h] [-v] [-a] [-lc <PATH>] [-lk <PATH>] [-lr <PATH>]
 
 Options:
     -h, --help      Show this help message and exit.
@@ -25,13 +25,13 @@ Options:
     -lr, --reports  Specify file location for the "ghas_report.py" reports directory.
 
 Example:
-    python setup.py -a -lc /path/to/config -lk /path/to/keyfile -lr /path/to/reports
+    python ghas_enc_key.py -a -lc /path/to/config -lk /path/to/keyfile -lr /path/to/reports
 
-Author: Rupert Herbst <rhe8502(at)pm.me>
-Mastodon: https://mastodon.infosec.exchange/@rhe
 Package: ghas_enc_key.py
 Version: 1.0.0
 Date: 2023-04-XX
+
+Author: Rupert Herbst <rhe8502(at)pm.me>
 Project URL: https://github.com/rhe8502/ghas_report
 License: Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 """
@@ -49,14 +49,11 @@ License: Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Configuration file name and encryption key file name
-conf_file_name = "ghas_config.json"
-env_file_name = ".ghas_env"
-
 from cryptography.fernet import Fernet
 import argparse
 import getpass
 import json
+import sys
 import os
 
 def enc_key(key_file):
@@ -128,7 +125,7 @@ def store_api_key(config_file, key_file, script_dir, report_dir):
     fernet_key = enc_key(key_file)
 
     # Prompt user for the GitHub API key
-    print('\nNote: For security reasons, your GitHub API key will not be displayed as you type.')
+    print('Note: For security reasons, your GitHub API key will not be displayed as you type.')
     api_key = getpass.getpass('Enter your GitHub API key: ')
 
     # Encrypt the API key with the Fernet encryption key
@@ -198,15 +195,19 @@ def create_config(config_file):
     except IOError as e:
         raise SystemExit(f"Error writing to {e.filename}: {e}")
 
-def main():
-    # version, date, and author information
+def setup_argparse():
+    """This function sets up an ArgumentParser object to handle command line arguments for the GHAS Reporting Setup Tool.
+
+    Returns:
+    argparse.ArgumentParser: An ArgumentParser object configured with the necessary arguments and options for the GHAS Reporting Setup Tool.
+    """
+     # version, date, and author information
     version_number = '1.0.0'
     release_date = '2023-04-XX'
     url = 'https://github.com/rhe8502/ghas_report'
     
     # version string
     version_string = f"GHAS Reporting Setup Tool v{version_number} ({url})\nRelease Date: {release_date}\n"
-
 
     # Command-line arguments parser
     parser = argparse.ArgumentParser(description='Store a GitHub API key for the GitHub Advanced Security (GHAS) Vulnerability Report script securely in a JSON configuration file.', formatter_class=argparse.RawTextHelpFormatter)
@@ -223,16 +224,38 @@ def main():
     location_options_group.add_argument('-lc', '--config', metavar='<PATH>', type=str, help='specify file location for the "ghas_report.py" configuration file ("ghas_conf.json")')
     location_options_group.add_argument('-lk', '--keyfile', metavar='<PATH>', type=str, help='specify file location for the "ghas_report.py" encryption key file (".ghas_env")')
     location_options_group.add_argument('-lr', '--reports', metavar='<PATH>', type=str, help='specify file location for the "ghas_report.py" reports directory')
+    
+    return parser
+
+def process_args(parser):
+    """This function processes command line arguments passed to the script using an ArgumentParser object.
+
+    Args:
+    parser (argparse.ArgumentParser): An instance of ArgumentParser to parse command line arguments.
+
+    Raises:
+    SystemExit: If no arguments are specified or if the required --api-key argument is not provided.
+
+    Returns:
+    None: The function stores the API key in the specified configuration and key files and sets up the report directory, but does not return any values.
+    """
+    # Configuration file name and encryption key file name
+    conf_file_name = "ghas_config.json"
+    env_file_name = ".ghas_env"
 
     # Parse the arguments
     args = parser.parse_args()
-
-    # If --api-key is not specified, print the help message and exit.
-    if not args.api_key:
-        print('No arguments specified. Use -h or --help for help.')
+  
+    # Check for errors in the arguments passed and print the help menu if an error is found
+    if len(sys.argv) == 1:
         parser.print_help()
-
-    # Determine script location
+        raise SystemExit('\nError: No arguments specified. Please specify at least one argument.\n')
+        # If --api-key is not specified, print the help message and exit.
+    elif not args.api_key:
+        parser.print_help()
+        print('\nGitHub API key argument not specified (-a, --api-key).\n')
+    
+     # Determine script location
     script_dir = os.path.dirname(os.path.abspath(__file__))
     
     # Joins the script directory, or specified file path (-lc, -lk), with the default configuration file name.
@@ -242,6 +265,10 @@ def main():
 
     if args.api_key:
         store_api_key(config_file, key_file, script_dir, report_dir)
- 
+
+def main():
+    parser = setup_argparse()
+    process_args(parser)
+
 if __name__ == '__main__':
     main()
