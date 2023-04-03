@@ -531,7 +531,7 @@ def main():
     # Define the list of output types to process. If the -wA flag is present, include all output types. Otherwise, include only the output types that were passed as arguments, if no output types are specified, default to CSV
     output_types = ['csv', 'json'] if args.output_all else [output_type for output_type in ['csv', 'json'] if getattr(args, f'output_{output_type}')] or ['csv']
 
-    # Set state to 'open' if the -o flag is present
+    # Set state to 'open' if the -o ,or --open flag is present
     alert_state = 'open' if args.open else ''
 
     # Call the load_configuration function to load the configuration file and assign the returned values to the config and headers variables 
