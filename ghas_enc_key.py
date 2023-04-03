@@ -201,7 +201,7 @@ def setup_argparse():
     Returns:
     argparse.ArgumentParser: An ArgumentParser object configured with the necessary arguments and options for the GHAS Reporting Setup Tool.
     """
-     # version, date, and author information
+     # version, date, and project URL
     version_number = '1.0.0'
     release_date = '2023-04-XX'
     url = 'https://github.com/rhe8502/ghas_report'
