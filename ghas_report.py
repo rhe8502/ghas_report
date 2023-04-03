@@ -9,9 +9,11 @@ organization or repository and generates a report based on the specified options
 The supported alert types include code scanning alerts, secret scanning alerts, and dependabot
 alerts.
 
-The script requires a configuration file ("conf_file") and an environment file ("env_file") to 
-retrieve API credentials and settings. The API credentials are encrypted using the 
-"ghas_enc_key.py" script, which generates and stores an encrypted GitHub API key
+The script requires a configuration file ("ghas_config.json") to retrieve API credentials
+and settings, and a file (".ghas_env") that stores the key.
+
+The API credentials are encrypted using the "ghas_enc_key.py" script, which generates
+and stores an encrypted GitHub API key
 
 Command-line arguments can be passed to specify the alert types to process and the 
 output format of the report. The supported output formats are CSV and JSON, and the 
@@ -25,7 +27,7 @@ The script uses the GitHub API to retrieve alert data and requires valid API cre
 An API key can be added using the "ghas_enc_key.py" script.
 
 Usage:
-$ python script_name.py [-h] [-v] [-A] [-a] [-c] [-s] [-d] [-o] [-wA] [-wC] [-wJ]
+$ python ghas_report.py [-h] [-v] [-A] [-a] [-c] [-s] [-d] [-o] [-wA] [-wC] [-wJ]
 
 Options:
 -h, --help Show help message and exit.
