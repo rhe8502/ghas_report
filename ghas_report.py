@@ -559,6 +559,9 @@ def process_args(parser):
     return args, alert_types, output_types, alert_state
 
 def main():
+    # The following line is intended for debugging purposes only - do not uncomment 
+    # start_time = time.perf_counter()
+    
     parser = setup_argparse()
     args, alert_types, output_types, alert_state = process_args(parser)
 
