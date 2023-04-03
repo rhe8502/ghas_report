@@ -472,10 +472,14 @@ def load_configuration(args):
     }
     return config, headers
 
-def main():
-    # The following line is intended for debugging purposes only - do not uncomment 
-    # start_time = time.perf_counter()
+def setup_argparse():
+    """Creates and returns an ArgumentParser object for the GitHub Advanced Security (GHAS) reporting tool.
 
+    The ArgumentParser is configured with arguments for generating different types of alert reports, output formats, and file locations.
+
+    Returns:
+        argparse.ArgumentParser: The configured ArgumentParser object.
+    """
     # version, date, and author information
     version_number = '1.0.0'
     release_date = '2023-04-XX'
@@ -514,9 +518,27 @@ def main():
     location_options_group.add_argument('-lc', '--config', metavar='<PATH>', type=str, help='specify file location for the configuration file ("ghas_conf.json")')
     location_options_group.add_argument('-lk', '--keyfile', metavar='<PATH>', type=str, help='specify file location for the encryption key file (".ghas_env") - overrides the location specified in the configuration file')
     location_options_group.add_argument('-lr', '--reports', metavar='<PATH>', type=str, help='specify file location for the reports directory - overrides the location specified in the configuration file')
-    
+
+    return parser
+
+def process_args(parser):
+    """Processes the command-line arguments, checks for errors, and extracts alert types, output types, and alert state.
+
+    Args:
+        parser (argparse.ArgumentParser): The configured ArgumentParser object.
+
+    Returns:
+        tuple: A tuple containing the following elements:
+            - args (argparse.Namespace): The parsed command-line arguments.
+            - alert_types (list): The selected alert types to process.
+            - output_types (list): The chosen output formats for the report.
+            - alert_state (str): The alert state, 'open' if the --open flag is present, otherwise an empty string.
+
+    Raises:
+        SystemExit: If no arguments are specified or if --output-all is used with --output-csv or --output-json.
+    """
     args = parser.parse_args()
-    
+
     # Check for errors in the arguments passed and print the help menu if an error is found
     if len(sys.argv) == 1:
         parser.print_help()
@@ -533,6 +555,12 @@ def main():
 
     # Set state to 'open' if the -o ,or --open flag is present
     alert_state = 'open' if args.open else ''
+
+    return args, alert_types, output_types, alert_state
+
+def main():
+    parser = setup_argparse()
+    args, alert_types, output_types, alert_state = process_args(parser)
 
     # Call the load_configuration function to load the configuration file and assign the returned values to the config and headers variables 
     global headers # Not too happy about this, but it's the only way I could get the headers variable to be accessible throughout the script
