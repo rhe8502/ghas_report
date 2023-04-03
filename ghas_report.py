@@ -55,11 +55,11 @@ read data from configuration and environment files.
 
 Note: The script also contains commented-out code for measuring execution time for debugging purposes only.
 
-Author: Rupert Herbst <rhe8502(at)pm.me>
-Mastodon: https://mastodon.infosec.exchange/@rhe
 Package: ghas_report.py
 Version: 1.0.0
 Date: 2023-04-XX
+
+Author: Rupert Herbst <rhe8502(at)pm.me>
 Project URL: https://github.com/rhe8502/ghas_report
 License: Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 """
