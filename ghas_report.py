@@ -269,6 +269,7 @@ def alert_count(api_url, project_data): # Candidate for refactoring
                         alert_count.append(['N/A', gh_name, get_code_scanning_alerts(api_url, owner=owner, repo_name=gh_name)[1], get_secret_scanning_alerts(api_url, owner=owner, repo_name=gh_name)[1], get_dependabot_alerts(api_url, owner=owner, repo_name=gh_name)[1]])
                 except Exception as e:
                     print(f"Error getting alert count for {'repository' if gh_entity == 'repositories' else 'organization'}: {gh_name} - {e}")
+    
     return {'raw_alerts': alert_count, 'scan_alerts': alert_count}
 
 def safe_get(alert, keys, default=''):
@@ -289,6 +290,7 @@ def safe_get(alert, keys, default=''):
             result = result.get(key)
         else:
             break
+    
     return default if result is None else result
 
 def scan_alerts(api_url, project_data, alert_type, output_type=None ,state=None):
@@ -392,6 +394,7 @@ def scan_alerts(api_url, project_data, alert_type, output_type=None ,state=None)
                         scan_alerts.append(alert_data)
                 except Exception as e:
                     print(f"Error getting {alert_type} alerts for {'repository' if gh_entity == 'repositories' else 'organization'}: {gh_name} - {e}")
+    
     return {'raw_alerts': raw_alerts, 'scan_alerts': scan_alerts}
 
 def load_configuration(args):
@@ -443,7 +446,7 @@ def load_configuration(args):
     api_key = config.get('connection', {}).get('gh_api_key','')
     enc_path = config.get('location', {}).get('keyfile','')
  
-    #Check if a commandline argument was passed for the keyfile, if not, check if the keyfile path was specified in the config file, and if not, use the default
+    # Check if a commandline argument was passed for the keyfile, if not, check if the keyfile path was specified in the config file, and if not, use the default
     if args.keyfile:
         env_file = os.path.join(args.keyfile, env_file_name)
     elif enc_path:
@@ -472,6 +475,7 @@ def load_configuration(args):
         "Authorization": f"token {api_key}",
         "X-GitHub-Api-Version": "2022-11-28" # API version number, see https://docs.github.com/en/rest/overview/api-versions
     }
+
     return config, headers
 
 def setup_argparse():
@@ -482,7 +486,7 @@ def setup_argparse():
     Returns:
         argparse.ArgumentParser: The configured ArgumentParser object.
     """
-    # version, date, and author information
+    # version, date, and project URL
     version_number = '1.0.0'
     release_date = '2023-04-XX'
     url = 'https://github.com/rhe8502/ghas_report'
@@ -494,7 +498,7 @@ def setup_argparse():
     parser = argparse.ArgumentParser(description='''The script is designed to retrieve various types of GitHub Advanced Security (GHAS) alerts for a specified organization or repository. GHAS alerts can include code scanning alerts, secret scanning alerts, and Dependabot alerts.
                                                     \nIt will generate a report based on the specified options and write the results to a file. The output format of the report can also be specified using command-line options. The supported formats are CSV and JSON. By default, the output is written to a CSV file. If the -oA option is specified, then the report will be written to all supported formats.''', formatter_class=argparse.RawTextHelpFormatter)
 
-    #Options group
+    # Options group
     parser.add_argument('-v', '--version', action='version', version=(version_string), help="show program's version number and exit")
 
     # Alert reports
@@ -558,15 +562,6 @@ def process_args(parser):
     # Set state to 'open' if the -o ,or --open flag is present
     alert_state = 'open' if args.open else ''
 
-    return args, alert_types, output_types, alert_state
-
-def main():
-    # Start the timer to measure the script's execution time
-    start_time = time.perf_counter()
-
-    parser = setup_argparse()
-    args, alert_types, output_types, alert_state = process_args(parser)
-
     # Call the load_configuration function to load the configuration file and assign the returned values to the config and headers variables 
     global headers # Not too happy about this, but it's the only way I could get the headers variable to be accessible throughout the script
     config, headers = load_configuration(args)
@@ -583,12 +578,24 @@ def main():
                     'secretscan': lambda output_type=output_type: write_alerts(scan_alerts(api_url, project_data, 'secretscan', output_type, alert_state), project_name, output_type, report_dir, call_func='secret_scan'),
                     'dependabot': lambda output_type=output_type: write_alerts(scan_alerts(api_url, project_data, 'dependabot', output_type, alert_state), project_name, output_type, report_dir, call_func='dependabot_scan'),
                 }[alert_type]()
-    
-    # End the timer and print the script's execution time
+
+def execution_time(start_time):
+    """Prints the script's execution time."""
     end_time = time.perf_counter()
     elapsed_time = end_time - start_time
     min, sec = divmod(elapsed_time, 60)
     print(f"\nScript execution time: {elapsed_time:.2f} seconds\n") if elapsed_time < 60 else print(f"\nScript execution time: {int(min):02d}:{int(sec):02d} minutes\n")
+
+def main():
+    # Start the timer to measure the script's execution time
+    start_time = time.perf_counter()
+
+    # Call the setup_argparse function to configure the ArgumentParser object and assign the returned value to the parser variable, then call the process_args function to process the command-line arguments
+    parser = setup_argparse()
+    process_args(parser)
+    
+    # Call the execution_time function to print the script's execution time
+    execution_time(start_time)
 
 if __name__ == '__main__':
     main()
