@@ -85,12 +85,10 @@ import argparse
 import csv
 import json
 import requests
-from requests.structures import CaseInsensitiveDict
 import os
 import sys
 import time
 import re
-
 
 def api_error_response(response):
     """Generate error message from API response.
@@ -120,74 +118,6 @@ def api_error_response(response):
         raise Exception(error_message)
     else:
         raise Exception(f"Error {response.status_code}: {response.json().get('message', '')}" + (f", Errors: {response.json().get('errors', '')}" if response.json().get('errors') else ''))
-
-
-def get_scan_alerts2(api_url, org_name=None, call_func=None, owner=None, repo_name=None, state=None):
-
-    scan_types = {
-        'codescan': 'code-scanning',
-        'secretscan': 'secret-scanning',
-        'dependabot': 'dependabot'
-    }
-
-    base_url = f"{api_url}/repos/{owner}/{repo_name}/{scan_types[call_func]}/alerts" if repo_name else f"{api_url}/orgs/{org_name}/{scan_types[call_func]}/alerts"
-    state_query = '&state=open' if state == 'open' else ''
-    print(base_url)
-
-    scan_alerts = []
-    open_alert_count = 0
-    sev_counts = {
-        'critical': 0,
-        'high': 0,
-        'medium': 0,
-        'low': 0
-    }
-
-    url = f"{base_url}?page=1{state_query}"
-    print(url)
-
-    while url:
-        response = requests.get(url, headers=headers)
-
-        if response.status_code == 200:
-            alerts = response.json()
-
-            if not alerts:
-                break
-
-            # Count the number of open alerts and the number of alerts per severity
-            for alert in alerts:
-                if alert['state'] == 'open':
-                    open_alert_count += 1
-
-                    if call_func == 'dependabot':
-                        sev = alert['security_advisory']['severity'].lower()
-                    else:
-                        sev = alert['rule']['security_severity_level'].lower()
-
-                        if sev in sev_counts:
-                            sev_counts[sev] += 1
-
-            scan_alerts.extend(alerts)
-
-            # Get the next page URL from the 'Link' header if present
-            link_header = response.headers.get('Link')
-            if link_header:
-                link_header = CaseInsensitiveDict([tuple(header.split("; ")) for header in link_header.split(", ")])
-                url = link_header.get('rel="next"')
-                if url:
-                    url = url[1:-1]  # Remove angle brackets
-                print(url)
-            else:
-                url = None
-        else:
-            print(api_error_response(response))
-            break
-
-    sev_list = [val for val in sev_counts.values()]
-    sev_list.insert(0, open_alert_count)
-
-    return scan_alerts, sev_list
 
 def get_scan_alerts(api_url, org_name=None, call_func=None, owner=None, repo_name=None, state=None):
     
@@ -240,6 +170,43 @@ def get_scan_alerts(api_url, org_name=None, call_func=None, owner=None, repo_nam
         sev_list = [val for val in sev_counts.values()]
         sev_list.insert(0, open_alert_count)
 
+    elif call_func == 'secretscan':
+        url = f"{base_url}?per_page=100{state_query}"
+
+        while url:
+            response = requests.get(url, headers=headers)
+
+            if response.status_code == 200:
+                alerts = response.json()
+
+                if not alerts:
+                    break
+
+                # Count the number of open alerts
+                for alert in alerts:
+                    if alert['state'] == 'open':
+                        open_alert_count += 1
+
+                scan_alerts.extend(alerts)
+
+                # Get the next page URL from the 'Link' header if present
+                link_header = response.headers.get('Link')
+                if link_header:
+                    next_page_link = re.search(r'<(.+?)>; rel="next"', link_header)
+                    if next_page_link:
+                        url = next_page_link.group(1)
+                        print(url)
+                    else:
+                        url = None
+                else:
+                    url = None
+            else:
+                print(api_error_response(response))
+                break
+
+        sev_list = [val for val in sev_counts.values()]
+        sev_list.insert(0, open_alert_count)
+
     elif call_func == 'dependabot':
         url = f"{base_url}?per_page=100{state_query}"
 
@@ -281,177 +248,9 @@ def get_scan_alerts(api_url, org_name=None, call_func=None, owner=None, repo_nam
         sev_list = [val for val in sev_counts.values()]
         sev_list.insert(0, open_alert_count)
 
-    elif call_func == 'secretscan':
-        url = f"{base_url}?per_page=100{state_query}"
-
-        while url:
-            response = requests.get(url, headers=headers)
-
-            if response.status_code == 200:
-                alerts = response.json()
-
-                if not alerts:
-                    break
-
-                # Count the number of open alerts
-                for alert in alerts:
-                    if alert['state'] == 'open':
-                        open_alert_count += 1
-
-                scan_alerts.extend(alerts)
-
-                # Get the next page URL from the 'Link' header if present
-                link_header = response.headers.get('Link')
-                if link_header:
-                    next_page_link = re.search(r'<(.+?)>; rel="next"', link_header)
-                    if next_page_link:
-                        url = next_page_link.group(1)
-                        print(url)
-                    else:
-                        url = None
-                else:
-                    url = None
-            else:
-                print(api_error_response(response))
-                break
-
-        sev_list = [val for val in sev_counts.values()]
-        sev_list.insert(0, open_alert_count)
-
     return scan_alerts, sev_list
 
-'''
-def process_scan_alerts(api_url, org_name=None, owner=None, repo_name=None, state=None):
-    """Fetches the code scanning alerts for a given GitHub organization or repository and optionally filters them by state.
-
-    Args:
-        api_url (str): The base API URL for the GitHub instance.
-        org_name (str, optional): The GitHub organization name. Should be provided if repo_name is not specified.
-        owner (str, optional): The GitHub username of the repository owner. Required if repo_name is provided.
-        repo_name (str, optional): The GitHub repository name. Should be provided if org_name is not specified.
-        state (str, optional): The state of the alerts to fetch. Can be "open" or None. If None, returns all alerts.
-
-    Returns:
-        tuple: A tuple containing a list of code scanning alerts and the count of open alerts.
-            If the API call fails, it will print an error message generated by the `api_error_response` function.
-    """
-    page_no = 1
-    base_url = f"{api_url}/repos/{owner}/{repo_name}" if repo_name else f"{api_url}/orgs/{org_name}"
-    state_query = '&state=open' if state == 'open' else ''
-
-    code_scanning_alerts = []
-    open_alert_count = 0
-    sev_counts = {
-        'critical': 0,
-        'high': 0,
-        'medium': 0,
-        'low': 0
-    }
-
-    while True:
-        url = f"{base_url}/code-scanning/alerts?page={page_no}{state_query}"
-        # print(url)
-        response = requests.get(url, headers=headers)
-
-        if response.status_code == 200:
-            alerts = response.json()
-
-            if not alerts:
-                break
-
-            # Count the number of open alerts and the number of alerts per severity
-            for alert in alerts:
-                if alert['state'] == 'open':
-                    open_alert_count += 1
-                    sev = alert['rule']['security_severity_level'].lower()
-                    if sev in sev_counts:
-                        sev_counts[sev] += 1
-
-            code_scanning_alerts.extend(alerts)
-            page_no += 1
-        else:
-            print(api_error_response(response))
-            break
-
-    sev_list = [val for val in sev_counts.values()]
-    sev_list.insert(0, open_alert_count)
-
-    return code_scanning_alerts, sev_list
-
-def get_secret_scanning_alerts(api_url, org_name=None, owner=None, repo_name=None, state=None):
-    """Fetches the secret scanning alerts for a given GitHub organization or repository and optionally filters them by state.
-    
-    Args:
-        api_url (str): The base API URL for the GitHub instance.
-        org_name (str, optional): The GitHub organization name. Should be provided if repo_name is not specified.
-        owner (str, optional): The GitHub username of the repository owner. Required if repo_name is provided.
-        repo_name (str, optional): The GitHub repository name. Should be provided if org_name is not specified.
-        state (str, optional): The state of the alerts to fetch. Can be "open" or None. If None, returns all alerts.
-    
-    Returns:
-        tuple: A tuple containing a list of secret scanning alerts and the count of open alerts.
-               If the API call fails, it will print an error message generated by the `api_error_response` function.
-    """
-    base_url = f"{api_url}/repos/{owner}/{repo_name}" if repo_name else f"{api_url}/orgs/{org_name}"
-    state_query = '?state=open' if state == 'open' else ''
-    url = f"{base_url}/secret-scanning/alerts{state_query}"
-    
-    response = requests.get(url, headers=headers)
-
-    if response.status_code == 200:
-        secret_scanning_alerts = response.json()
-        secret_scanning_alert_count = sum(1 for alert in secret_scanning_alerts if alert['state'] == 'open')
-        return secret_scanning_alerts, secret_scanning_alert_count
-    else:
-        print(api_error_response(response))
- 
-def get_dependabot_alerts(api_url, org_name=None, owner=None, repo_name=None, state=None):
-    """Fetches the Dependabot alerts for a given GitHub organization or repository and optionally filters them by state.
-
-    Args:
-        api_url (str): The base API URL for the GitHub instance.
-        org_name (str, optional): The GitHub organization name. Should be provided if repo_name is not specified.
-        owner (str, optional): The GitHub username of the repository owner. Required if repo_name is provided.
-        repo_name (str, optional): The GitHub repository name. Should be provided if org_name is not specified.
-        state (str, optional): The state of the alerts to fetch. Can be "open" or None. If None, returns all alerts.
-
-    Returns:
-        tuple: A tuple containing a list of Dependabot alerts and the count of open alerts.
-            If the API call fails, it will print an error message generated by the `api_error_response` function.
-    """
-    base_url = f"{api_url}/repos/{owner}/{repo_name}" if repo_name else f"{api_url}/orgs/{org_name}"
-    state_query = '?state=open' if state == 'open' else ''
-    url = f"{base_url}/dependabot/alerts{state_query}"
-
-    response = requests.get(url, headers=headers)
-
-    if response.status_code == 200:
-        dependabot_alerts = response.json()
-        open_alert_count = 0
-        sev_list =[]
-        sev_counts = {
-            'critical': 0,
-            'high': 0,
-            'medium': 0,
-            'low': 0
-        }
-        
-        for alert in dependabot_alerts:
-            if alert['state'] == 'open':
-                open_alert_count += 1
-                sev = alert['security_advisory']['severity'].lower()
-                if sev in sev_counts:
-                    sev_counts[sev] += 1
-
-        sev_list = [value for value in sev_counts.values()]
-        sev_list.insert(0,open_alert_count)
-
-        return dependabot_alerts, sev_list
-    else:
-        print(api_error_response(response))
-'''
-
-def alert_count(api_url, project_data, call_func=None): # Candidate for refactor
+def alert_count(api_url, project_data):
     """Collects alert count data for the specified GitHub organizations and repositories.
 
     Args:
@@ -464,19 +263,25 @@ def alert_count(api_url, project_data, call_func=None): # Candidate for refactor
     """
     alert_count = []
 
+    scan_types = {
+        'Code Scan': 'codescan',
+        'Secret Scan': 'secretscan',
+        'Dependabot Scan': 'dependabot'
+    }
+
     for gh_entity in ['organizations', 'repositories']:
         for gh_name in project_data.get(gh_entity, []):
             if gh_name:
                 try:
-                    if gh_entity == 'organizations':  
-                        alert_count.append((*[gh_name, '','Code Scan'], *process_scan_alerts(api_url, org_name=gh_name, call_func=call_func)[1]))
-                        alert_count.append((*[gh_name, '','Dependabot Scan'], *process_scan_alerts(api_url, org_name=gh_name, call_func=call_func)[1]))
-                        alert_count.append((*[gh_name, '','Secret Scan'], process_scan_alerts(api_url, org_name=gh_name, call_func=call_func)[1]))
-                    elif gh_entity == 'repositories':
-                        owner = project_data.get('owner')
-                        alert_count.append((*['', gh_name,'Code Scan'], *process_scan_alerts(api_url, owner=owner, repo_name=gh_name, call_func=call_func)[1]))
-                        alert_count.append((*['', gh_name,'Dependabot Scan'], *process_scan_alerts(api_url, owner=owner,  repo_name=gh_name, call_func=call_func)[1]))
-                        alert_count.append((*['', gh_name,'Secret Scan'], process_scan_alerts(api_url, owner=owner, repo_name=gh_name, call_func=call_func)[1]))
+                    for scan_label, call_func in scan_types.items():
+                        if gh_entity == 'organizations':
+                            sev_list = get_scan_alerts(api_url, org_name=gh_name, call_func=call_func)[1]
+                        elif gh_entity == 'repositories':
+                            owner = project_data.get('owner')
+                            sev_list = get_scan_alerts(api_url, owner=owner, repo_name=gh_name, call_func=call_func)[1]
+
+                        row = [gh_name if gh_entity == 'organizations' else '', gh_name if gh_entity == 'repositories' else '', scan_label, *sev_list]
+                        alert_count.append(row)
                 except Exception as e:
                     print(f"Error getting alert count for {'repository' if gh_entity == 'repositories' else 'organization'}: {gh_name} - {e}")
 
@@ -598,7 +403,6 @@ def process_scan_alerts(api_url, project_data, call_func, output_type=None ,stat
 
                         # Add Code Scanning alert data to the list
                         if call_func == 'codescan':
-                            #print("I'm Code Scan")
                             alert_data.extend([
                                 safe_get(alert, ['rule', 'security_severity_level'], ''),
                                 safe_get(alert, ['state'], ''),
@@ -617,7 +421,6 @@ def process_scan_alerts(api_url, project_data, call_func, output_type=None ,stat
                                 
                         # Add Secret Scanning alert data to the list
                         elif call_func == 'secretscan':
-                            #print("I'm Secret Scan")
                             alert_data.extend([
                                 safe_get(alert, ['state'], ''),
                                 datetime.strptime(safe_get(alert, ['resolved_at']), '%Y-%m-%dT%H:%M:%SZ').strftime('%Y-%m-%d') if safe_get(alert, ['resolved_at']) != '' else '',
@@ -630,7 +433,6 @@ def process_scan_alerts(api_url, project_data, call_func, output_type=None ,stat
                 
                         # Add Dependabot alert data to the list
                         elif call_func == 'dependabot':
-                            # print("I'm Dependabot Scan")
                             alert_data.extend([
                                 safe_get(alert, ['security_advisory', 'severity'], ''),
                                 safe_get(alert, ['state'], ''),
@@ -828,7 +630,7 @@ def process_args(parser):
         for alert_type in alert_types:
             for output_type in output_types:
                 {
-                    #'alerts': lambda: write_alerts(alert_count(api_url, project_data), project_name, output_type, report_dir, call_func='alert_count'),
+                    'alerts': lambda: write_alerts(alert_count(api_url, project_data), project_name, output_type, report_dir, call_func='alert_count'),
                     'codescan': lambda output_type=output_type: write_alerts(process_scan_alerts(api_url, project_data, 'codescan', output_type, alert_state), project_name, output_type, report_dir, call_func='code_scan'),
                     'secretscan': lambda output_type=output_type: write_alerts(process_scan_alerts(api_url, project_data, 'secretscan', output_type, alert_state), project_name, output_type, report_dir, call_func='secret_scan'),
                     'dependabot': lambda output_type=output_type: write_alerts(process_scan_alerts(api_url, project_data, 'dependabot', output_type, alert_state), project_name, output_type, report_dir, call_func='dependabot_scan'),
