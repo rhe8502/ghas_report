@@ -85,6 +85,7 @@ import argparse
 import csv
 import json
 import requests
+from requests.structures import CaseInsensitiveDict
 import os
 import sys
 import time
@@ -118,7 +119,130 @@ def api_error_response(response):
     else:
         raise Exception(f"Error {response.status_code}: {response.json().get('message', '')}" + (f", Errors: {response.json().get('errors', '')}" if response.json().get('errors') else ''))
 
-def get_code_scanning_alerts(api_url, org_name=None, owner=None, repo_name=None, state=None):
+
+def get_scan_alerts(api_url, org_name=None, call_func=None, owner=None, repo_name=None, state=None):
+
+    scan_types = {
+        'codescan': 'code-scanning',
+        'secretscan': 'secret-scanning',
+        'dependabot': 'dependabot'
+    }
+
+    base_url = f"{api_url}/repos/{owner}/{repo_name}/{scan_types[call_func]}/alerts" if repo_name else f"{api_url}/orgs/{org_name}/{scan_types[call_func]}/alerts"
+    state_query = '&state=open' if state == 'open' else ''
+    print(base_url)
+
+    scan_alerts = []
+    open_alert_count = 0
+    sev_counts = {
+        'critical': 0,
+        'high': 0,
+        'medium': 0,
+        'low': 0
+    }
+
+    url = f"{base_url}?page=1{state_query}"
+    print(url)
+
+    while url:
+        response = requests.get(url, headers=headers)
+
+        if response.status_code == 200:
+            alerts = response.json()
+
+            if not alerts:
+                break
+
+            # Count the number of open alerts and the number of alerts per severity
+            for alert in alerts:
+                if alert['state'] == 'open':
+                    open_alert_count += 1
+
+                    if call_func == 'dependabot':
+                        sev = alert['security_advisory']['severity'].lower()
+                    else:
+                        sev = alert['rule']['security_severity_level'].lower()
+
+                        if sev in sev_counts:
+                            sev_counts[sev] += 1
+
+            scan_alerts.extend(alerts)
+
+            # Get the next page URL from the 'Link' header if present
+            link_header = response.headers.get('Link')
+            if link_header:
+                link_header = CaseInsensitiveDict([tuple(header.split("; ")) for header in link_header.split(", ")])
+                url = link_header.get('rel="next"')
+                if url:
+                    url = url[1:-1]  # Remove angle brackets
+                print(url)
+            else:
+                url = None
+        else:
+            print(api_error_response(response))
+            break
+
+    sev_list = [val for val in sev_counts.values()]
+    sev_list.insert(0, open_alert_count)
+
+    return scan_alerts, sev_list
+
+
+def get_scan_alerts2(api_url, org_name=None, call_func=None, owner=None, repo_name=None, state=None):
+    
+    scan_types = {
+        'codescan' : 'code-scanning',
+        'secretscan': 'secret-scanning',
+        'dependabot': 'dependabot'
+    }
+    
+    page_no = 1
+    base_url = f"{api_url}/repos/{owner}/{repo_name}/{scan_types[call_func]}/alerts" if repo_name else f"{api_url}/orgs/{org_name}/{scan_types[call_func]}/alerts"
+    state_query = '&state=open' if state == 'open' else ''
+    print(base_url)
+    
+    scan_alerts = []
+    open_alert_count = 0
+    sev_counts = {
+        'critical': 0,
+        'high': 0,
+        'medium': 0,
+        'low': 0
+    }
+
+    while True:
+        url = f"{base_url}?page={page_no}{state_query}"
+        print(url)
+
+        response = requests.get(url, headers=headers)
+
+        if response.status_code == 200:
+            alerts = response.json()
+
+            if not alerts:
+                break
+
+            # Count the number of open alerts and the number of alerts per severity
+            for alert in alerts:
+                if alert['state'] == 'open':
+                    open_alert_count += 1
+                    sev = alert['rule']['security_severity_level'].lower()
+                    
+                    if sev in sev_counts:
+                        sev_counts[sev] += 1
+
+            scan_alerts.extend(alerts)
+            page_no += 1
+        else:
+            print(api_error_response(response))
+            break
+
+    sev_list = [val for val in sev_counts.values()]
+    sev_list.insert(0, open_alert_count)
+
+    return scan_alerts, sev_list
+'''
+def process_scan_alerts(api_url, org_name=None, owner=None, repo_name=None, state=None):
     """Fetches the code scanning alerts for a given GitHub organization or repository and optionally filters them by state.
 
     Args:
@@ -147,7 +271,7 @@ def get_code_scanning_alerts(api_url, org_name=None, owner=None, repo_name=None,
 
     while True:
         url = f"{base_url}/code-scanning/alerts?page={page_no}{state_query}"
-        print(url)
+        # print(url)
         response = requests.get(url, headers=headers)
 
         if response.status_code == 200:
@@ -246,8 +370,9 @@ def get_dependabot_alerts(api_url, org_name=None, owner=None, repo_name=None, st
         return dependabot_alerts, sev_list
     else:
         print(api_error_response(response))
+'''
 
-def alert_count(api_url, project_data): # Candidate for refactor
+def lalert_count(api_url, project_data, call_func=None): # Candidate for refactor
     """Collects alert count data for the specified GitHub organizations and repositories.
 
     Args:
@@ -265,14 +390,14 @@ def alert_count(api_url, project_data): # Candidate for refactor
             if gh_name:
                 try:
                     if gh_entity == 'organizations':  
-                        alert_count.append((*[gh_name, '','Code Scan'], *get_code_scanning_alerts(api_url, org_name=gh_name)[1]))
-                        alert_count.append((*[gh_name, '','Dependabot Scan'], *get_dependabot_alerts(api_url, org_name=gh_name)[1]))
-                        alert_count.append((*[gh_name, '','Secret Scan'], get_secret_scanning_alerts(api_url, org_name=gh_name)[1]))
+                        alert_count.append((*[gh_name, '','Code Scan'], *process_scan_alerts(api_url, org_name=gh_name, call_func=call_func)[1]))
+                        alert_count.append((*[gh_name, '','Dependabot Scan'], *process_scan_alerts(api_url, org_name=gh_name, call_func=call_func)[1]))
+                        alert_count.append((*[gh_name, '','Secret Scan'], process_scan_alerts(api_url, org_name=gh_name, call_func=call_func)[1]))
                     elif gh_entity == 'repositories':
                         owner = project_data.get('owner')
-                        alert_count.append((*['', gh_name,'Code Scan'], *get_code_scanning_alerts(api_url, owner=owner, repo_name=gh_name)[1]))
-                        alert_count.append((*['', gh_name,'Dependabot Scan'], *get_dependabot_alerts(api_url, owner=owner,  repo_name=gh_name)[1]))
-                        alert_count.append((*['', gh_name,'Secret Scan'], get_secret_scanning_alerts(api_url, owner=owner, repo_name=gh_name)[1]))
+                        alert_count.append((*['', gh_name,'Code Scan'], *process_scan_alerts(api_url, owner=owner, repo_name=gh_name, call_func=call_func)[1]))
+                        alert_count.append((*['', gh_name,'Dependabot Scan'], *process_scan_alerts(api_url, owner=owner,  repo_name=gh_name, call_func=call_func)[1]))
+                        alert_count.append((*['', gh_name,'Secret Scan'], process_scan_alerts(api_url, owner=owner, repo_name=gh_name, call_func=call_func)[1]))
                 except Exception as e:
                     print(f"Error getting alert count for {'repository' if gh_entity == 'repositories' else 'organization'}: {gh_name} - {e}")
 
@@ -292,7 +417,8 @@ def write_alerts(alert_data, project_name, output_type=None, report_dir='', call
         IOError: If there is an error writing to the file.
     """
     # Set output type to CSV is none defined
-    output_type = output_type if output_type is not None else 'csv'
+    # output_type = output_type if output_type is not None else 'csv'
+    output_type = 'csv' if output_type is None else output_type
     
     # Check if a report path is defined and create the file path, otherwise create a folder for the current date and create the file path
     if report_dir:
@@ -347,7 +473,7 @@ def safe_get(alert, keys, default=''):
     
     return default if result is None else result
 
-def scan_alerts(api_url, project_data, alert_type, output_type=None ,state=None):
+def process_scan_alerts(api_url, project_data, call_func, output_type=None ,state=None):
     """Retrieve and process security alerts from GitHub for a list of organizations and/or repositories.
 
     Args:
@@ -363,12 +489,7 @@ def scan_alerts(api_url, project_data, alert_type, output_type=None ,state=None)
     raw_alerts = []
     scan_alerts = []
 
-    # Get the alerts for the specified alert type
-    alert_functions = {
-        'codescan': get_code_scanning_alerts,
-        'secretscan': get_secret_scanning_alerts,
-        'dependabot': get_dependabot_alerts,
-    }
+    print(call_func)
 
     # Iterate through each organization and repository and get the alerts
     for gh_entity in ['organizations', 'repositories']:
@@ -376,7 +497,8 @@ def scan_alerts(api_url, project_data, alert_type, output_type=None ,state=None)
             if gh_name:
                 try:
                     owner = project_data.get('owner') if gh_entity == 'repositories' else None
-                    alerts = alert_functions[alert_type](api_url, owner=owner, org_name=gh_name if gh_entity == 'organizations' else None, state=state, repo_name=gh_name if gh_entity == 'repositories' else None)[0]
+                    #alerts = alert_functions[alert_type](api_url, owner=owner, org_name=gh_name, alert_type=alert_type if gh_entity == 'organizations' else None, state=state, repo_name=gh_name if gh_entity == 'repositories' else None)[0]
+                    alerts = get_scan_alerts(api_url, owner=owner, org_name=gh_name, call_func=call_func if gh_entity == 'organizations' else None, state=state, repo_name=gh_name if gh_entity == 'repositories' else None)[0]
 
                     # If the output type is json return the raw alerts and ignore the rest of the function
                     if output_type == 'json':
@@ -399,7 +521,8 @@ def scan_alerts(api_url, project_data, alert_type, output_type=None ,state=None)
                         ]
 
                         # Add Code Scanning alert data to the list
-                        if alert_type == 'codescan':
+                        if call_func == 'codescan':
+                            #print("I'm Code Scan")
                             alert_data.extend([
                                 safe_get(alert, ['rule', 'security_severity_level'], ''),
                                 safe_get(alert, ['state'], ''),
@@ -417,7 +540,8 @@ def scan_alerts(api_url, project_data, alert_type, output_type=None ,state=None)
                             ])
                                 
                         # Add Secret Scanning alert data to the list
-                        elif alert_type == 'secretscan':
+                        elif call_func == 'secretscan':
+                            print("I'm Secret Scan")
                             alert_data.extend([
                                 safe_get(alert, ['state'], ''),
                                 datetime.strptime(safe_get(alert, ['resolved_at']), '%Y-%m-%dT%H:%M:%SZ').strftime('%Y-%m-%d') if safe_get(alert, ['resolved_at']) != '' else '',
@@ -429,7 +553,8 @@ def scan_alerts(api_url, project_data, alert_type, output_type=None ,state=None)
                             ])
                 
                         # Add Dependabot alert data to the list
-                        elif alert_type == 'dependabot':
+                        elif call_func == 'dependabot':
+                            print("I'm Dependabot Scan")
                             alert_data.extend([
                                 safe_get(alert, ['security_advisory', 'severity'], ''),
                                 safe_get(alert, ['state'], ''),
@@ -447,7 +572,7 @@ def scan_alerts(api_url, project_data, alert_type, output_type=None ,state=None)
                             ])
                         scan_alerts.append(alert_data)
                 except Exception as e:
-                    print(f"Error getting {alert_type} alerts for {'repository' if gh_entity == 'repositories' else 'organization'}: {gh_name} - {e}")
+                    print(f"Error getting {call_func} alerts for {'repository' if gh_entity == 'repositories' else 'organization'}: {gh_name} - {e}")
     
     return {'raw_alerts': raw_alerts, 'scan_alerts': scan_alerts}
 
@@ -627,10 +752,10 @@ def process_args(parser):
         for alert_type in alert_types:
             for output_type in output_types:
                 {
-                    'alerts': lambda: write_alerts(alert_count(api_url, project_data), project_name, output_type, report_dir, call_func='alert_count'),
-                    'codescan': lambda output_type=output_type: write_alerts(scan_alerts(api_url, project_data, 'codescan', output_type, alert_state), project_name, output_type, report_dir, call_func='code_scan'),
-                    'secretscan': lambda output_type=output_type: write_alerts(scan_alerts(api_url, project_data, 'secretscan', output_type, alert_state), project_name, output_type, report_dir, call_func='secret_scan'),
-                    'dependabot': lambda output_type=output_type: write_alerts(scan_alerts(api_url, project_data, 'dependabot', output_type, alert_state), project_name, output_type, report_dir, call_func='dependabot_scan'),
+                    #'alerts': lambda: write_alerts(alert_count(api_url, project_data), project_name, output_type, report_dir, call_func='alert_count'),
+                    'codescan': lambda output_type=output_type: write_alerts(process_scan_alerts(api_url, project_data, 'codescan', output_type, alert_state), project_name, output_type, report_dir, call_func='code_scan'),
+                    'secretscan': lambda output_type=output_type: write_alerts(process_scan_alerts(api_url, project_data, 'secretscan', output_type, alert_state), project_name, output_type, report_dir, call_func='secret_scan'),
+                    'dependabot': lambda output_type=output_type: write_alerts(process_scan_alerts(api_url, project_data, 'dependabot', output_type, alert_state), project_name, output_type, report_dir, call_func='dependabot_scan'),
                 }[alert_type]()
 
 def execution_time(start_time):
