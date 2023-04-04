@@ -147,6 +147,7 @@ def get_code_scanning_alerts(api_url, org_name=None, owner=None, repo_name=None,
             'medium': 0,
             'low': 0
         }
+        sev_list =[]
 
         for alert in code_scanning_alerts:
             if alert['state'] == 'open':
@@ -155,9 +156,16 @@ def get_code_scanning_alerts(api_url, org_name=None, owner=None, repo_name=None,
                 if severity in severity_counts:
                     severity_counts[severity] += 1
         severity_counts['total'] = open_alert_count 
-        print(severity_counts)
 
-        return code_scanning_alerts, severity_counts
+        for value in severity_counts.values():
+           sev_list.append(value)
+        print(sev_list)
+        exit(0)
+
+        
+        #print(severity_counts)
+
+        return code_scanning_alerts, sev_list
     else:
         print(api_error_response(response))
 
@@ -224,8 +232,10 @@ def get_dependabot_alerts(api_url, org_name=None, owner=None, repo_name=None, st
                 severity = alert['security_advisory']['severity'].lower()
                 if severity in severity_counts:
                     severity_counts[severity] += 1
+        
         severity_counts['total'] = open_alert_count
-        print(severity_counts)
+        # values_list = list(severity_counts.values())
+        # print(values_list)
         
         return dependabot_alerts, severity_counts
     else:
@@ -257,7 +267,7 @@ def write_alerts(alert_data, project_name, output_type=None, report_dir='', call
    
     # Set the column headers for the CSV file depending on the type of alert
     scan_options = {
-        'alert_count': ['Organization', 'Repository', 'Code Scanning Alerts', 'Secret Scanning Alerts', 'Dependabot Alerts'],
+        'alert_count': ['Organization', 'Repository', 'Total', 'Critical', 'High', 'Medium', 'Low'],
         'code_scan': ['Alert', 'Organization', 'Repository', 'Date Created', 'Date Updated', 'Days Open', 'Severity', 'State', 'Rule ID', 'Description', 'Category', 'File', 'Fixed At', 'Dismissed At', 'Dismissed By', 'Dismissed Reason', 'Dismissed Comment', 'Tool', 'GitHub URL'],
         'secret_scan': ['Alert', 'Organization', 'Repository', 'Date Created', 'Date Updated', 'Days Open', 'State', 'Resolved At', 'Resolved By', 'Resolved Reason', 'Secret Type Name', 'Secret Type', 'GitHub URL'],
         'dependabot_scan': ['Alert', 'Organization', 'Repository', 'Date Created', 'Date Updated', 'Days Open', 'Severity', 'State', 'Package Name', 'CVE ID', 'Summary', 'Fixed At', 'Dismissed At', 'Dismissed By', 'Dismissed Reason', 'Dismissed Comment', 'Scope', 'Manifest ID', 'GitHub URL']
@@ -290,15 +300,18 @@ def alert_count(api_url, project_data): # Candidate for refactoring
             The keys are "raw_alerts" and "scan_alerts", both containing a list of lists with the alert count information.
     """
     alert_count = []
+
     for gh_entity in ['organizations', 'repositories']:
         for gh_name in project_data.get(gh_entity, []):
             if gh_name:
                 try:
                     if gh_entity == 'organizations':
-                        alert_count.append([gh_name, 'N/A', get_code_scanning_alerts(api_url, org_name=gh_name)[1], get_secret_scanning_alerts(api_url, org_name=gh_name)[1], get_dependabot_alerts(api_url, org_name=gh_name)[1]])
+                        # alert_count.append([gh_name, 'N/A', get_code_scanning_alerts(api_url, org_name=gh_name)[1], get_secret_scanning_alerts(api_url, org_name=gh_name)[1], get_dependabot_alerts(api_url, org_name=gh_name)[1]])
+                        alert_count.append([gh_name, 'N/A', get_code_scanning_alerts(api_url, org_name=gh_name)[1], get_secret_scanning_alerts(api_url, org_name=gh_name)[1]])
                     elif gh_entity == 'repositories':
                         owner = project_data.get('owner')
-                        alert_count.append(['N/A', gh_name, get_code_scanning_alerts(api_url, owner=owner, repo_name=gh_name)[1], get_secret_scanning_alerts(api_url, owner=owner, repo_name=gh_name)[1], get_dependabot_alerts(api_url, owner=owner, repo_name=gh_name)[1]])
+                        # alert_count.append(['N/A', gh_name, get_code_scanning_alerts(api_url, owner=owner, repo_name=gh_name)[1], get_secret_scanning_alerts(api_url, owner=owner, repo_name=gh_name)[1], get_dependabot_alerts(api_url, owner=owner, repo_name=gh_name)[1]])
+                        alert_count.append(['N/A', gh_name, get_code_scanning_alerts(api_url, owner=owner, repo_name=gh_name)[1], get_secret_scanning_alerts(api_url, owner=owner, repo_name=gh_name)[1]])
                 except Exception as e:
                     print(f"Error getting alert count for {'repository' if gh_entity == 'repositories' else 'organization'}: {gh_name} - {e}")
     
