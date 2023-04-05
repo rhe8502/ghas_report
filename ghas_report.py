@@ -136,7 +136,10 @@ def get_scan_alerts(api_url, org_name=None, call_func=None, owner=None, repo_nam
         'critical': 0,
         'high': 0,
         'medium': 0,
-        'low': 0
+        'low': 0,
+        'warning': 0,
+        'note': 0,
+        'error': 0
     }
 
     if call_func == 'codescan':
@@ -156,8 +159,7 @@ def get_scan_alerts(api_url, org_name=None, call_func=None, owner=None, repo_nam
                 for alert in alerts:
                     if alert['state'] == 'open':
                         open_alert_count += 1
-                        sev = alert['rule']['security_severity_level'].lower()
-                        
+                        sev = alert.get('rule', {}).get('security_severity_level') or alert.get('rule', {}).get('severity', '').lower()
                         if sev in sev_counts:
                             sev_counts[sev] += 1
 
@@ -314,7 +316,7 @@ def write_alerts(alert_data, project_name, output_type=None, report_dir='', call
    
     # Set the column headers for the CSV file depending on the type of alert
     scan_options = {
-        'alert_count': ['Organization', 'Repository', 'Scan Type', 'Total Alerts', 'Critical', 'High', 'Medium', 'Low'],
+        'alert_count': ['Organization', 'Repository', 'Scan Type', 'Total Alerts', 'Critical', 'High', 'Medium', 'Low', 'Warning', 'Note', 'Error'],
         'code_scan': ['Alert', 'Organization', 'Repository', 'Date Created', 'Date Updated', 'Days Open', 'Severity', 'State', 'Rule ID', 'Description', 'Category', 'File', 'Fixed At', 'Dismissed At', 'Dismissed By', 'Dismissed Reason', 'Dismissed Comment', 'Tool', 'GitHub URL'],
         'secret_scan': ['Alert', 'Organization', 'Repository', 'Date Created', 'Date Updated', 'Days Open', 'State', 'Resolved At', 'Resolved By', 'Resolved Reason', 'Secret Type Name', 'Secret Type', 'GitHub URL'],
         'dependabot_scan': ['Alert', 'Organization', 'Repository', 'Date Created', 'Date Updated', 'Days Open', 'Severity', 'State', 'Package Name', 'CVE ID', 'Summary', 'Fixed At', 'Dismissed At', 'Dismissed By', 'Dismissed Reason', 'Dismissed Comment', 'Scope', 'Manifest ID', 'GitHub URL']
@@ -404,7 +406,8 @@ def process_scan_alerts(api_url, project_data, call_func, output_type=None ,stat
                         # Add Code Scanning alert data to the list
                         if call_func == 'codescan':
                             alert_data.extend([
-                                safe_get(alert, ['rule', 'security_severity_level'], ''),
+                                # safe_get(alert, ['rule', 'security_severity_level'], ''),
+                                safe_get(alert, ['rule', 'security_severity_level']) or safe_get(alert, ['rule', 'severity'], ''),
                                 safe_get(alert, ['state'], ''),
                                 safe_get(alert, ['rule', 'id'], ''),
                                 safe_get(alert, ['most_recent_instance', 'message', 'text'], ''),
