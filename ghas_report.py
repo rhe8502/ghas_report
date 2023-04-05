@@ -141,7 +141,7 @@ def get_scan_alerts(api_url, org_name=None, call_func=None, owner=None, repo_nam
         'error': 0
     }
 
-    def process_alerts_count(alerts, sev_counts):
+    def alerts_count(alerts, sev_counts):
         nonlocal open_alert_count
         for alert in alerts:
             if alert['state'] == 'open':
@@ -175,7 +175,7 @@ def get_scan_alerts(api_url, org_name=None, call_func=None, owner=None, repo_nam
                 if not alerts:
                     break
 
-                process_alerts_count(alerts, sev_counts)
+                alerts_count(alerts, sev_counts)
                 scan_alerts.extend(alerts)
                 page_no += 1
             else:
@@ -194,7 +194,7 @@ def get_scan_alerts(api_url, org_name=None, call_func=None, owner=None, repo_nam
                 if not alerts:
                     break
 
-                process_alerts_count(alerts, sev_counts)
+                alerts_count(alerts, sev_counts)
                 scan_alerts.extend(alerts)
 
                 # Get the next page URL from the 'Link' header if present
@@ -209,7 +209,7 @@ def get_scan_alerts(api_url, org_name=None, call_func=None, owner=None, repo_nam
 
     return scan_alerts, sev_list
 
-def alert_count(api_url, project_data):
+def process_alerts_count(api_url, project_data):
     """Collects alert count data for the specified GitHub organizations and repositories.
 
     Args:
@@ -590,7 +590,7 @@ def process_args(parser):
         for alert_type in alert_types:
             for output_type in output_types:
                 {
-                    'alerts': lambda: write_alerts(alert_count(api_url, project_data), project_name, output_type, report_dir, call_func='alert_count'),
+                    'alerts': lambda: write_alerts(process_alerts_count(api_url, project_data), project_name, output_type, report_dir, call_func='alert_count'),
                     'codescan': lambda output_type=output_type: write_alerts(process_scan_alerts(api_url, project_data, 'codescan', output_type, alert_state), project_name, output_type, report_dir, call_func='code_scan'),
                     'secretscan': lambda output_type=output_type: write_alerts(process_scan_alerts(api_url, project_data, 'secretscan', output_type, alert_state), project_name, output_type, report_dir, call_func='secret_scan'),
                     'dependabot': lambda output_type=output_type: write_alerts(process_scan_alerts(api_url, project_data, 'dependabot', output_type, alert_state), project_name, output_type, report_dir, call_func='dependabot_scan'),
