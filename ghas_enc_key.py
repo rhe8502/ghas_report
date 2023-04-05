@@ -29,7 +29,7 @@ Example:
 
 Package: ghas_enc_key.py
 Version: 1.0.0
-Date: 2023-04-XX
+Date: 2023-04-06
 
 Author: Rupert Herbst <rhe8502(at)pm.me>
 Project URL: https://github.com/rhe8502/ghas_report
@@ -203,7 +203,7 @@ def setup_argparse():
     """
      # version, date, and project URL
     version_number = '1.0.0'
-    release_date = '2023-04-XX'
+    release_date = '2023-04-06'
     url = 'https://github.com/rhe8502/ghas_report'
     
     # version string
