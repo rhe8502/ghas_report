@@ -193,7 +193,7 @@ def get_scan_alerts(api_url, org_name=None, call_func=None, owner=None, repo_nam
         Returns:
             str: The URL of the next page, or None if not found.
         """
-        
+
         if link_header:
             next_page_link = re.search(r'<(.+?)>; rel="next"', link_header)
             return next_page_link.group(1) if next_page_link else None
@@ -567,7 +567,7 @@ def setup_argparse():
     version_string = f"GHAS Reporting Tool v{version_number} ({url})\nRelease Date: {release_date}\n"
 
     # Command-line arguments parser
-    parser = argparse.ArgumentParser(description='''The script is designed to retrieve various types of GitHub Advanced Security (GHAS) alerts for a specified organization or repository. GHAS alerts can include code scanning alerts, secret scanning alerts, and Dependabot alerts.
+    parser = argparse.ArgumentParser(description='''The script is designed to retrieve various types of GitHub Advanced Security (GHAS) alerts for a specified organization or repository. GHAS alerts can include Code scanning alerts, Secret scanning alerts, and Dependabot alerts.
                                                     \nIt will generate a report based on the specified options and write the results to a file. The output format of the report can also be specified using command-line options. The supported formats are CSV and JSON. By default, the output is written to a CSV file. If the -wA option is specified, then the report will be written to all supported formats.''', formatter_class=argparse.RawTextHelpFormatter)
 
     # Options group
@@ -575,15 +575,15 @@ def setup_argparse():
 
     # Alert reports
     alert_group = parser.add_argument_group('Generate alert reports')
-    alert_group.add_argument('-A', '--all', action='store_true', help='generate Alert Count, Code Scanning, Secret Scanning, and Dependabot alert reports')
-    alert_group.add_argument('-a', '--alerts', action='store_true', help='generate Alert Count report of all open alerts')
+    alert_group.add_argument('-a', '--all', action='store_true', help='generate Alert Count, Code Scanning, Secret Scanning, and Dependabot alert reports')
+    alert_group.add_argument('-l', '--alerts', action='store_true', help='generate Alert Count report of all open alerts')
     alert_group.add_argument('-c', '--codescan', action='store_true', help='generate Code Scan alert report')
     alert_group.add_argument('-s', '--secretscan', action='store_true', help='generate Secret Scanning alert report')
     alert_group.add_argument('-d', '--dependabot', action='store_true', help='generate Dependabot alert report')
 
     # Optional alert reports arguments
     alert_options_group = parser.add_argument_group('Optional alert report arguments')
-    alert_options_group.add_argument('-o', '--open', action='store_true', help='only generate reports for open alerts (Alert Count only reports open alerts)')
+    alert_options_group.add_argument('-o', '--open', action='store_true', help='generate report(s) for open alerts only (note: this has no effect on Alert Count report "-l)"')
 
     # Output file format arguments
     output_group = parser.add_argument_group('Output file format arguments')
