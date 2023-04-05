@@ -120,6 +120,24 @@ def api_error_response(response):
         raise Exception(f"Error {response.status_code}: {response.json().get('message', '')}" + (f", Errors: {response.json().get('errors', '')}" if response.json().get('errors') else ''))
 
 def get_scan_alerts(api_url, org_name=None, call_func=None, owner=None, repo_name=None, state=None):
+    """Retrieve alerts for a specific scan type from the GitHub API and count the open alerts and their corresponding severity levels.
+
+    Args:
+        api_url (str): The base URL for the GitHub API.
+        org_name (str, optional): The name of the organization to retrieve alerts for.
+        call_func (str, optional): The type of scan alerts to retrieve ('codescan', 'secretscan', 'dependabot').
+        owner (str, optional): The name of the repository owner.
+        repo_name (str, optional): The name of the repository to retrieve alerts for.
+        state (str, optional): The state of the alerts to retrieve ('open', 'closed', or None for all).
+
+    Returns:
+        tuple: A tuple containing a list of scan_alerts and a list of severity counts (sev_list).
+
+    Nested Functions:
+        alerts_count(alerts, sev_counts)
+        get_next_page_link(link_header)
+    """
+
     scan_types = {
         'codescan': 'code-scanning',
         'secretscan': 'secret-scanning',
@@ -142,6 +160,16 @@ def get_scan_alerts(api_url, org_name=None, call_func=None, owner=None, repo_nam
     }
 
     def alerts_count(alerts, sev_counts):
+        """Counts the open alerts and their corresponding severity levels for the given list of alerts.
+
+        Args:
+            alerts (list): A list of alert dictionaries.
+            sev_counts (dict): A dictionary to store the counts for each severity level.
+
+        Returns:
+            None
+        """
+
         nonlocal open_alert_count
         for alert in alerts:
             if alert['state'] == 'open':
@@ -157,6 +185,15 @@ def get_scan_alerts(api_url, org_name=None, call_func=None, owner=None, repo_nam
                     sev_counts[sev] += 1
 
     def get_next_page_link(link_header):
+        """Extracts the next page URL from the 'Link' header in a paginated API response.
+
+        Args:
+            link_header (str): The 'Link' header value from an API response.
+
+        Returns:
+            str: The URL of the next page, or None if not found.
+        """
+        
         if link_header:
             next_page_link = re.search(r'<(.+?)>; rel="next"', link_header)
             return next_page_link.group(1) if next_page_link else None
@@ -210,16 +247,23 @@ def get_scan_alerts(api_url, org_name=None, call_func=None, owner=None, repo_nam
     return scan_alerts, sev_list
 
 def process_alerts_count(api_url, project_data):
-    """Collects alert count data for the specified GitHub organizations and repositories.
+    """Processes and retrieves the alert count for each scan type (Code Scan, Secret Scan, Dependabot Scan)
+       for the specified organizations and repositories.
+
+    Description:
+        The function iterates through the organizations and repositories provided in the project_data dictionary and retrieves the alert count
+        for each scan type (Code Scan, Secret Scan, Dependabot Scan). It then appends the alert count for each organization or repository along
+        with the corresponding scan type to a list.
 
     Args:
-        api_url (str): The base API URL for the GitHub instance.
-        project_data (dict): A dictionary containing the organizations and repositories for which to fetch the alert count.
+        api_url (str): The API URL to retrieve scan data.
+        project_data (dict): A dictionary containing project data, including organizations, repositories, and owner (if repositories are specified).
 
     Returns:
-        dict: A dictionary containing the raw alert count data and the formatted alert count data.
-            The keys are "raw_alerts" and "scan_alerts", both containing a list of lists with the alert count information.
+        dict: A dictionary containing the raw alert count data and the processed alert count data as lists.
+    
     """
+
     alert_count = []
 
     scan_types = {
@@ -247,18 +291,22 @@ def process_alerts_count(api_url, project_data):
     return {'raw_alerts': alert_count, 'scan_alerts': alert_count}
 
 def write_alerts(alert_data, project_name, output_type=None, report_dir='', call_func=None):
-    """Writes alert data to a file in the specified format (CSV or JSON) for a given project.
+    """Writes the processed scan alert data to a file in the specified format (CSV or JSON).
+
+    Description:
+        The function writes the processed scan alert data to a file in the specified output format (CSV or JSON). It sets the column headers for the CSV file depending on the type of alert. If the output type is not specified, it defaults to 'csv'. The function creates a file path based on the report directory, project name, alert type, and the current date and time.
 
     Args:
-        alert_data (dict): A dictionary containing the alert data to be written.
+        alert_data (dict): A dictionary containing processed alert data.
         project_name (str): The name of the project.
-        output_type (str, optional): The output format for the file, either 'csv' or 'json'. Defaults to 'csv'.
-        report_dir (str, optional): The path to the directory where the file should be written. Defaults to an empty string.
-        call_func (str, optional): The type of alert data being written. Used to determine the column headers for CSV files.
+        output_type (str, optional): The output format for the alert data file; either 'csv' or 'json'. Defaults to 'csv'.
+        report_dir (str, optional): The directory where the report file should be saved. Defaults to an empty string, which means the file will be saved in a folder named after the current date.
+        call_func (str, optional): The function to be called for processing alerts; either 'codescan', 'secretscan', or 'dependabot'. Defaults to None.
 
     Raises:
-        IOError: If there is an error writing to the file.
+        SystemExit: If there's an error writing to the file.
     """
+
     # Set output type to CSV is none defined
     # output_type = output_type if output_type is not None else 'csv'
     output_type = 'csv' if output_type is None else output_type
@@ -317,18 +365,25 @@ def safe_get(alert, keys, default=''):
     return default if result is None else result
 
 def process_scan_alerts(api_url, project_data, call_func, output_type=None ,state=None):
-    """Retrieve and process security alerts from GitHub for a list of organizations and/or repositories.
+    """Retrieves and processes scan alerts from GitHub organizations and repositories.
+
+    Description:
+        The function iterates through each organization and repository, retrieves the corresponding scan alerts, processes them, and adds the processed alerts
+        to a list. If output_type is set to 'json', the function returns raw alerts and skips further processing. The alerts are processed depending on the
+        call_func parameter, which can be 'codescan', 'secretscan', or 'dependabot'. The function returns a dictionary containing the raw alerts and the processed
+        scan alerts.
 
     Args:
-        api_url (str): The base GitHub API URL.
-        project_data (dict): A dictionary containing lists of organizations and/or repositories to retrieve alerts from.
-        alert_type (str): The type of alert to retrieve (codescan, secretscan, or dependabot).
-        output_type (str, optional): The output format for the results (json or csv). Defaults to None.
-        state (str, optional): The state of the alerts to retrieve (open or closed). Defaults to None.
+        api_url (str): The base API URL for GitHub.
+        project_data (dict): A dictionary containing project information such as owner, organizations, and repositories.
+        call_func (str): The function to be called for processing alerts; either 'codescan', 'secretscan', or 'dependabot'.
+        output_type (str, optional): The output type for raw alerts, defaults to None. If 'json', the function returns raw alerts and skips further processing.
+        state (str, optional): Filter alerts based on their state, defaults to None.
 
     Returns:
-        dict: A dictionary containing raw alerts and processed alerts for the specified alert type.
+        dict: A dictionary containing raw_alerts and processed scan_alerts.
     """
+
     raw_alerts = []
     scan_alerts = []
 
@@ -513,7 +568,7 @@ def setup_argparse():
 
     # Command-line arguments parser
     parser = argparse.ArgumentParser(description='''The script is designed to retrieve various types of GitHub Advanced Security (GHAS) alerts for a specified organization or repository. GHAS alerts can include code scanning alerts, secret scanning alerts, and Dependabot alerts.
-                                                    \nIt will generate a report based on the specified options and write the results to a file. The output format of the report can also be specified using command-line options. The supported formats are CSV and JSON. By default, the output is written to a CSV file. If the -oA option is specified, then the report will be written to all supported formats.''', formatter_class=argparse.RawTextHelpFormatter)
+                                                    \nIt will generate a report based on the specified options and write the results to a file. The output format of the report can also be specified using command-line options. The supported formats are CSV and JSON. By default, the output is written to a CSV file. If the -wA option is specified, then the report will be written to all supported formats.''', formatter_class=argparse.RawTextHelpFormatter)
 
     # Options group
     parser.add_argument('-v', '--version', action='version', version=(version_string), help="show program's version number and exit")
