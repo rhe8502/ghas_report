@@ -120,16 +120,15 @@ def api_error_response(response):
         raise Exception(f"Error {response.status_code}: {response.json().get('message', '')}" + (f", Errors: {response.json().get('errors', '')}" if response.json().get('errors') else ''))
 
 def get_scan_alerts(api_url, org_name=None, call_func=None, owner=None, repo_name=None, state=None):
-    
     scan_types = {
-        'codescan' : 'code-scanning',
+        'codescan': 'code-scanning',
         'secretscan': 'secret-scanning',
         'dependabot': 'dependabot'
     }
 
     base_url = f"{api_url}/repos/{owner}/{repo_name}/{scan_types[call_func]}/alerts" if repo_name else f"{api_url}/orgs/{org_name}/{scan_types[call_func]}/alerts"
     state_query = '&state=open' if state == 'open' else ''
-    
+
     scan_alerts = []
     open_alert_count = 0
     sev_counts = {
@@ -142,9 +141,30 @@ def get_scan_alerts(api_url, org_name=None, call_func=None, owner=None, repo_nam
         'error': 0
     }
 
+    def process_alerts_count(alerts, sev_counts):
+        nonlocal open_alert_count
+        for alert in alerts:
+            if alert['state'] == 'open':
+                open_alert_count += 1
+                sev = None
+
+                if call_func == 'codescan':
+                    sev = alert.get('rule', {}).get('security_severity_level') or alert.get('rule', {}).get('severity', '').lower()
+                elif call_func == 'dependabot':
+                    sev = alert['security_advisory']['severity'].lower() if 'severity' in alert['security_advisory'] else None
+
+                if sev and sev in sev_counts:
+                    sev_counts[sev] += 1
+
+    def get_next_page_link(link_header):
+        if link_header:
+            next_page_link = re.search(r'<(.+?)>; rel="next"', link_header)
+            return next_page_link.group(1) if next_page_link else None
+        return None
+
     if call_func == 'codescan':
         page_no = 1
-    
+
         while True:
             url = f"{base_url}?page={page_no}{state_query}"
             response = requests.get(url, headers=headers)
@@ -155,24 +175,14 @@ def get_scan_alerts(api_url, org_name=None, call_func=None, owner=None, repo_nam
                 if not alerts:
                     break
 
-                # Count the number of open alerts and the number of alerts per severity
-                for alert in alerts:
-                    if alert['state'] == 'open':
-                        open_alert_count += 1
-                        sev = alert.get('rule', {}).get('security_severity_level') or alert.get('rule', {}).get('severity', '').lower()
-                        if sev in sev_counts:
-                            sev_counts[sev] += 1
-
+                process_alerts_count(alerts, sev_counts)
                 scan_alerts.extend(alerts)
                 page_no += 1
             else:
                 print(api_error_response(response))
                 break
 
-        sev_list = [val for val in sev_counts.values()]
-        sev_list.insert(0, open_alert_count)
-
-    elif call_func == 'secretscan':
+    elif call_func in ['secretscan', 'dependabot']:
         url = f"{base_url}?per_page=100{state_query}"
 
         while url:
@@ -184,71 +194,18 @@ def get_scan_alerts(api_url, org_name=None, call_func=None, owner=None, repo_nam
                 if not alerts:
                     break
 
-                # Count the number of open alerts
-                for alert in alerts:
-                    if alert['state'] == 'open':
-                        open_alert_count += 1
-
+                process_alerts_count(alerts, sev_counts)
                 scan_alerts.extend(alerts)
 
                 # Get the next page URL from the 'Link' header if present
                 link_header = response.headers.get('Link')
-                if link_header:
-                    next_page_link = re.search(r'<(.+?)>; rel="next"', link_header)
-                    if next_page_link:
-                        url = next_page_link.group(1)
-                        print(url)
-                    else:
-                        url = None
-                else:
-                    url = None
+                url = get_next_page_link(link_header)
             else:
                 print(api_error_response(response))
                 break
 
-        sev_list = [val for val in sev_counts.values()]
-        sev_list.insert(0, open_alert_count)
-
-    elif call_func == 'dependabot':
-        url = f"{base_url}?per_page=100{state_query}"
-
-        while url:
-            response = requests.get(url, headers=headers)
-
-            if response.status_code == 200:
-                alerts = response.json()
-
-                if not alerts:
-                    break
-
-                # Count the number of open alerts and the number of alerts per severity
-                for alert in alerts:
-                    if alert['state'] == 'open':
-                        open_alert_count += 1
-                        if 'severity' in alert['security_advisory']:
-                            sev = alert['security_advisory']['severity'].lower()
-
-                            if sev in sev_counts:
-                                sev_counts[sev] += 1
-
-                scan_alerts.extend(alerts)
-
-                # Get the next page URL from the 'Link' header if present
-                link_header = response.headers.get('Link')
-                if link_header:
-                    next_page_link = re.search(r'<(.+?)>; rel="next"', link_header)
-                    if next_page_link:
-                        url = next_page_link.group(1)
-                    else:
-                        url = None
-                else:
-                    url = None
-            else:
-                print(api_error_response(response))
-                break
-        
-        sev_list = [val for val in sev_counts.values()]
-        sev_list.insert(0, open_alert_count)
+    sev_list = [val for val in sev_counts.values()]
+    sev_list.insert(0, open_alert_count)
 
     return scan_alerts, sev_list
 
