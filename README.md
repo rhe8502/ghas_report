@@ -4,9 +4,11 @@
 
 The GHAS Reporting project consists of two Python scripts: `ghas_report.py` and `ghas_enc_key.py`.
 
-The primary script, `ghas_report.py`, is designed to retrieve various types of GitHub Advanced Security (GHAS) alerts for specified organizations or repositories and generate a report based on the provided options. The output formats supported are CSV and JSON. The main goal of this script is to aid vulnerability management and support development and security teams by saving time and providing valuable insights into the security status of their projects.
+The primary script, `ghas_report.py`, is designed to retrieve various types of GitHub Advanced Security (GHAS) alerts for specified organizations or repositories and generate a report based on the provided options. The output formats supported are CSV and JSON.
 
-The `ghas_enc_key.py` script is primarily used for the first-time setup and changing of the GitHub API key, which is stored in encrypted format in the `ghas_conf.json` configuration file. This script ensures the secure storage of the API key and allows for easy updates whenever needed.
+The main goal of this script is to aid vulnerability management and support development and security teams by saving time and providing valuable insights into the security status of their projects.
+
+The `ghas_enc_key.py` script is primarily used for the first-time setup and changing of the GitHub API key, which is stored in encrypted format in the **ghas_conf.json** configuration file. This script ensures the secure storage of the API key and allows for easy updates whenever needed.
 
 ### GitHub Advanced Security (GHAS)
 
@@ -130,12 +132,13 @@ For more usage examples and options, refer to the options sections for each scri
 The **"ghas_config.json"** JSON configuration file is used to specify connection details, location and project information for the GitHub Advanced Security (GHAS) reporting tool.  A sample configuration file **"ghas_config_example.json""** is included in the repo. Simply rename the file to **"ghas_config.json"** and run the initial setup script to securely store your GitHub API key, then populate the file with your unique project information.
 
 ### Connection section
-
-``` json
- "connection": {
-        "gh_api_url": "https://api.github.com",
-        "gh_api_key": "GITHUB_API_KEY"
-    }
+```json
+{
+    "connection": {
+        "gh_api_url": "https://api.github.com",
+        "gh_api_key": "GITHUB_API_KEY"
+    }
+}
 ```
 
 This section specifies the details for connecting to the GitHub API.
@@ -148,10 +151,12 @@ This section specifies the details for connecting to the GitHub API.
 If no custom file locations are specified in the configuration file and no command-line options are provided, the default location for both the reports and the key file will be the script directory. The default location for report files is a folder within the script directory, which will be created with the current date as the folder name.
 
 ``` json
-"location": {
-        "reports": "",
-        "key_file": ""
-    }
+{
+     "location": {
+             "reports": "",
+             "key_file": ""
+         }
+}
 ```
 
 This section specifies the location of the reports and the encryption key file.
@@ -164,28 +169,30 @@ This section specifies the location of the reports and the encryption key file.
 The `projects` section of the configuration file allows you to define your projects, including the owner, organizations, and repositories associated with each project. You can add multiple projects, each with its own set of organizations and repositories. This setup is useful when working with multiple projects, organizations, and repositories, especially in the context of a GitHub Enterprise account.
 
 ``` json
-"projects": {
-        "YOUR_PROJECT1": {
-            "owner": "GITHUB_OWNER",
-            "organizations": [
-                "ORG1"
-            ],
-            "repositories": [
-                "REPO1",
-                "REPO2"
-            ]
-        },
-        "YOUR_PROJECT2": {
-            "owner": "GITHUB_OWNER",
-            "organizations": [
-                "ORG1",
-                "ORG2"
-            ],
-            "repositories": [
-                "REPO1"
-            ]
-        }
-    }
+{
+     "projects": {
+             "YOUR_PROJECT1": {
+                 "owner": "GITHUB_OWNER",
+                 "organizations": [
+                     "ORG1"
+                 ],
+                 "repositories": [
+                     "REPO1",
+                     "REPO2"
+                 ]
+             },
+             "YOUR_PROJECT2": {
+                 "owner": "GITHUB_OWNER",
+                 "organizations": [
+                     "ORG1",
+                     "ORG2"
+                 ],
+                 "repositories": [
+                     "REPO1"
+                 ]
+             }
+         }
+}
 ```
 
 This section specifies the project information, including the owner, organizations, and repositories.
