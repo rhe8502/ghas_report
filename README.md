@@ -14,7 +14,13 @@ The `ghas_enc_key.py` script is primarily used for the first-time setup and chan
 
 GitHub Advanced Security is a suite of security tools provided by GitHub to help protect your code and detect vulnerabilities before they reach production. GHAS includes Code scanning, Secret scanning, and Dependabot alerts. For more information, visit [GitHub Advanced Security](https://docs.github.com/en/github-ae@latest/code-security).
 
-### Prerequisites
+
+<p align="center">
+  <img src="./assets/ghas_report.gif" alt="Terminal with GHAS reporting script running">
+</p>
+
+
+## Prerequisites
 
 To use these scripts, you will need:
 
@@ -25,7 +31,7 @@ To generate a GitHub API key for an individual repository, follow the instructio
 
 For enterprise repositories with Single Sign-On (SSO), follow the instructions [here](https://docs.github.com/en/enterprise-cloud@latest/authentication/authenticating-with-saml-single-sign-on/authorizing-a-personal-access-token-for-use-with-saml-single-sign-on).
 
-### Installation Instructions
+## Installation Instructions
 
 1. Clone the repository or download the zip file containing the project files.
 2. Extract the files to a directory of your choice.
@@ -49,11 +55,11 @@ python3 ghas_enc_key.py --api-key
 
 7. You are now ready to use the `ghas_report.py` script to generate reports. For usage instructions and examples, refer to the Usage Examples section in the documentation.
 
-### Usage Examples
+## Usage Examples
 
 Before using `ghas_report.py`, you must run the `ghas_enc_key.py` script to set up your API key. This script securely stores your GitHub API key in a JSON configuration file.
 
-#### Example 1: Generate all alert reports in the default CSV format
+### Example 1: Generate all alert reports in the default CSV format
 
 ```bash
 python3 ghas_report.py -a
@@ -61,7 +67,7 @@ python3 ghas_report.py -a
 
 This command generates all alert reports, including Alert Count, Code Scanning, Secret Scanning, and Dependabot alert reports, in the default CSV format.
 
-#### Example 2: Generate all open alerts report in JSON format
+### Example 2: Generate all open alerts report in JSON format
 
 ```bash
 python3 ghas_report.py -a -o -wJ
@@ -71,7 +77,7 @@ This command generates all open alert reports, including Alert Count, Code Scann
 
 Please note that the Alert Count report lists only open alerts by default, even without specifying the `-o` option.
 
-#### Example 3: Generate a Code Scan alert report and a Secret Scanning alert report in CSV format
+### Example 3: Generate a Code Scan alert report and a Secret Scanning alert report in CSV format
 
 ```bash
 python3 ghas_report.py -c -s
@@ -79,7 +85,7 @@ python3 ghas_report.py -c -s
 
 This command generates both a Code Scan alert report and a Secret Scanning alert report in the default CSV format.
 
-#### Example 4: Generate a Dependabot alert report in all formats and specify a custom reports directory
+### Example 4: Generate a Dependabot alert report in all formats and specify a custom reports directory
 
 ```bash
 python3 ghas_report.py -d -wA -lr /path/to/reports
@@ -87,7 +93,7 @@ python3 ghas_report.py -d -wA -lr /path/to/reports
 
 This command generates a Dependabot alert report and writes the output to all supported formats (CSV and JSON) in a custom reports directory specified by `/path/to/reports`.
 
-#### Example 5: Generate an open alerts report in JSON format with custom configuration and key file locations
+### Example 5: Generate an open alerts report in JSON format with custom configuration and key file locations
 
 ```bash
 python3 ghas_report.py -l -wJ -lc /path/to/ghas_conf.json -lk /path/to/.ghas_env
