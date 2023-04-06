@@ -29,8 +29,8 @@ jobs:
       run: |
         python -c '
 import os
-from mastodon import Mastodon
-
+run: |
+  python post_to_mastodon.py
 api_base_url = "https://infosec.exchange"
 access_token = os.environ["MASTODON_ACCESS_TOKEN"]
 
