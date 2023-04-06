@@ -38,5 +38,5 @@ jobs:
 
           Mastodon.api_base_url = api_base_url
           mastodon = Mastodon(access_token=access_token)
-          status = f"🚀 GHAS Reporting Tool v1.0.0 - Initial Release! A Python script to fetch GitHub Advanced Security (GHAS) alerts and generate reports in CSV and JSON formats. Download the release and check the README for setup details {release_url} #GitHub #NewRelease #GHAS #AppSec #InfoSec "
+          status = f"🚀 GHAS Reporting Tool v1.0.0 - Initial Release! A Python script to fetch GitHub Advanced Security (GHAS) alerts and generate reports in CSV and JSON formats. Download the release and check the README for setup details {release_url} #GitHub #NewRelease #GHAS #AppSec #InfoSec"
           mastodon.status_post(status) '
