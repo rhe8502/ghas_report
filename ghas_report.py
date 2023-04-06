@@ -27,13 +27,13 @@ The script uses the GitHub API to retrieve alert data and requires valid API cre
 An API key can be added using the "ghas_enc_key.py" script.
 
 Usage:
-$ python ghas_report.py [-h] [-v] [-A] [-a] [-c] [-s] [-d] [-o] [-wA] [-wC] [-wJ]
+$ python ghas_report.py [-h] [-v] [-l] [-a] [-c] [-s] [-d] [-o] [-wA] [-wC] [-wJ]
 
 Options:
 -h, --help Show help message and exit.
 -v, --version Show program's version number and exit.
--A, --all Generate Alert Count, Code Scanning, Secret Scanning, and Dependabot alert reports.
--a, --alerts Generate Alert Count report of all open alerts.
+-a, --all Generate Alert Count, Code Scanning, Secret Scanning, and Dependabot alert reports.
+-l, --alerts Generate Alert Count report of all open alerts.
 -c, --codescan Generate Code Scan alert report.
 -s, --secretscan Generate Secret Scanning alert report.
 -d, --dependabot Generate Dependabot alert report.
