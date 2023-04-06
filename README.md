@@ -39,7 +39,7 @@ For enterprise repositories with Single Sign-On (SSO), follow the instructions [
 
 ## Installation Instructions
 
-1. Clone the repository or download the zip file containing the project files.
+1. Go to the Releases tab and download the latest stable release as a zip file, or clone the repository directly.
 2. Extract the files to a directory of your choice.
 3. Open a terminal or command prompt and navigate to the directory containing the extracted files.
 4. Ensure you have Python 3.x installed on your system. You can verify this by running `python --version` or `python3 --version` in the terminal or command prompt. If you don't have Python 3.x installed, download and install it from the [official Python website](https://www.python.org/downloads/).
