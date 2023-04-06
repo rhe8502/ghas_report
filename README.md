@@ -2,6 +2,12 @@
 
 ## Description
 
+The GHAS Reporting script is a Python script designed to retrieve various types of GitHub Advanced Security (GHAS) alerts for specified organizations or repositories and generate a report based on the provided options. The output formats supported are CSV and JSON.
+
+Supported alert types are code scanning (vulnerabilities in source code), secret scanning (exposed sensitive data), and dependabot alerts (security risks and outdated dependencies).
+
+The script offers flexibility in configuring the report, enabling users to focus on the most relevant security aspects for their organization or repository.
+
 The GHAS Reporting project consists of two Python scripts: `ghas_report.py` and `ghas_enc_key.py`.
 
 The primary script, `ghas_report.py`, is designed to retrieve various types of GitHub Advanced Security (GHAS) alerts for specified organizations or repositories and generate a report based on the provided options. The output formats supported are CSV and JSON.
