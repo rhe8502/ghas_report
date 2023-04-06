@@ -28,9 +28,9 @@ jobs:
         MASTODON_ACCESS_TOKEN: ${{ secrets.MASTODON_ACCESS_TOKEN }}
       run: |
         python -c '
+        python post_to_mastodon.py
 import os
-run: |
-  python post_to_mastodon.py
+
 api_base_url = "https://infosec.exchange"
 access_token = os.environ["MASTODON_ACCESS_TOKEN"]
 
