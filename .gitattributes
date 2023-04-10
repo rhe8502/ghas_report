@@ -1,2 +1,2 @@
 .github/ export-ignore
-.gitignore
+.gitignore export-ignore
