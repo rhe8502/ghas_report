@@ -11,10 +11,10 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v3
       with:
         python-version: '3.x'
 
@@ -28,15 +28,16 @@ jobs:
         MASTODON_ACCESS_TOKEN: ${{ secrets.MASTODON_ACCESS_TOKEN }}
       run: |
         python -c '
-          import os
-          from mastodon import Mastodon
+        import os
+        from mastodon import Mastodon
 
-          api_base_url = "https://infosec.exchange"
-          access_token = os.environ["MASTODON_ACCESS_TOKEN"]
+        api_base_url = "https://infosec.exchange"
+        access_token = os.environ["MASTODON_ACCESS_TOKEN"]
+        release_url = "${{ github.event.release.html_url }}"
 
-          release_url = "${{ github.event.release.html_url }}"
-
-          Mastodon.api_base_url = api_base_url
-          mastodon = Mastodon(access_token=access_token)
-          status = f"🚀 GHAS Reporting Tool v1.0.0 - Initial Release! A Python script to fetch GitHub Advanced Security (GHAS) alerts and generate reports in CSV and JSON formats. Download the release and check the README for setup details {release_url} #GitHub #NewRelease #GHAS #AppSec #InfoSec"
-          mastodon.status_post(status) '
+        Mastodon.api_base_url = api_base_url
+        mastodon = Mastodon(access_token=access_token, api_base_url=api_base_url)
+        status = f"🚀 GHAS Reporting Tool v1.0.0 - Initial Release! A Python script to fetch GitHub Advanced Security (GHAS) alerts and generate reports in CSV and JSON formats. Download the release and check the README for setup details {release_url} #GitHub #NewRelease #GHAS #AppSec #InfoSec"
+        print(access_token)
+        mastodon.status_post(status)
+        '
