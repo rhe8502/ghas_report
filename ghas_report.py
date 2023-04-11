@@ -513,34 +513,37 @@ def load_configuration(args):
             config = json.load(f)
     except (FileNotFoundError, json.JSONDecodeError) as e:
         raise SystemExit(f"Error loading {conf_file}: {e}\nYou might need to run the \"ghas_enc_key.py\" script first to generate a new \"{conf_file}\" file.")
-
-    # Get API URL and API key from config    
-    api_key = config.get('connection', {}).get('gh_api_key','')
-    enc_path = config.get('location', {}).get('keyfile','')
- 
-    # Check if a commandline argument was passed for the keyfile, if not, check if the keyfile path was specified in the config file, and if not, use the default
-    if args.keyfile:
-        env_file = os.path.join(args.keyfile, env_file_name)
-    elif enc_path:
-        env_file = os.path.join(enc_path, env_file_name)
-    else:
-        env_file = os.path.join(script_dir, env_file_name)
     
+    # Checks if an environment variable was set for the API key, and if not, check if the API key was specified in the config file, and if not, raise an error
+    api_key = os.environ.get("GH_API_KEY") or config.get('connection', {}).get('gh_api_key','')
+
     if not api_key:
         raise SystemExit(f"Error: No API key found in \"{conf_file}\". Please run the \"ghas_enc_key.py\" script to add your API key.")
 
-    try:
-        with open(env_file, 'rb') as f:
-            f_key = f.read()
-    except FileNotFoundError as e:
-        raise SystemExit(f"Error loading {e.filename}: {e}\nYou might need to run the \"ghas_enc_key.py\" script first to generate a new \"{e.filename}\" file.")
-    
-    try:
-        fernet = Fernet(f_key)
-        api_key = fernet.decrypt(api_key.encode()).decode()
-        config['connection']['gh_api_key'] = api_key
-    except Exception :
-        raise SystemExit(f"Error: Invalid key, your API key might be corrupted. Please run the \"ghas_enc_key.py\" script to encrypt the API key.") 
+    if not os.environ.get("GH_API_KEY"):
+        # Get encryption key from config file
+        enc_path = config.get('location', {}).get('keyfile','')
+
+        # Check if a commandline argument was passed for the keyfile, if not, check if the keyfile path was specified in the config file, and if not, use the default
+        if args.keyfile:
+            env_file = os.path.join(args.keyfile, env_file_name)
+        elif enc_path:
+            env_file = os.path.join(enc_path, env_file_name)
+        else:
+            env_file = os.path.join(script_dir, env_file_name)  
+        
+        try:
+            with open(env_file, 'rb') as f:
+                f_key = f.read()
+        except FileNotFoundError as e:
+            raise SystemExit(f"Error loading {e.filename}: {e}\nYou might need to run the \"ghas_enc_key.py\" script first to generate a new \"{e.filename}\" file.")
+        
+        try:
+            fernet = Fernet(f_key)
+            api_key = fernet.decrypt(api_key.encode()).decode()
+            config['connection']['gh_api_key'] = api_key
+        except Exception :
+            raise SystemExit(f"Error: Invalid key, your API key might be corrupted. Please run the \"ghas_enc_key.py\" script to encrypt the API key.") 
 
     # Define headers for API requests to GitHub
     headers = {
@@ -584,7 +587,7 @@ def setup_argparse():
     # Optional alert reports arguments
     alert_options_group = parser.add_argument_group('Optional alert report arguments')
     alert_options_group.add_argument('-o', '--open', action='store_true', help='generate report(s) for open alerts only (note: this has no effect on Alert Count report "-l)"')
-
+   
     # Output file format arguments
     output_group = parser.add_argument_group('Output file format arguments')
     output_group.add_argument('-wA', '--output-all', action='store_true', help='write output to all formats at once')
