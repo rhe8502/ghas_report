@@ -28,8 +28,8 @@ Example:
     python ghas_enc_key.py -a -lc /path/to/config -lk /path/to/keyfile -lr /path/to/reports
 
 Package: ghas_enc_key.py
-Version: 1.0.0
-Date: 2023-04-06
+Version: 1.1.0
+Date: 2023-04-14
 
 Author: Rupert Herbst <rhe8502(at)pm.me>
 Project URL: https://github.com/rhe8502/ghas_report
@@ -136,7 +136,7 @@ def store_api_key(config_file, key_file, script_dir, report_dir):
         with open(config_file, 'r') as f:
             config = json.load(f)
     except (FileNotFoundError, json.JSONDecodeError) as e:
-        raise SystemExit(f"Error reading from {e.filename}: {e}")
+        raise SystemExit(f"Error reading from {config_file}: {e}")
     
     # Store the encrypted API key in config
     config['connection']['gh_api_key'] = enc_api_key.decode()
@@ -202,8 +202,8 @@ def setup_argparse():
     argparse.ArgumentParser: An ArgumentParser object configured with the necessary arguments and options for the GHAS Reporting Setup Tool.
     """
      # version, date, and project URL
-    version_number = '1.0.0'
-    release_date = '2023-04-06'
+    version_number = '1.1.0'
+    release_date = '2023-04-14'
     url = 'https://github.com/rhe8502/ghas_report'
     
     # version string

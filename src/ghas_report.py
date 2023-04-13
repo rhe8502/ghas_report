@@ -49,7 +49,7 @@ Requirements:
 
 Package: ghas_report.py
 Version: 1.1.0
-Date: 2023-04-13
+Date: 2023-04-14
 
 Author: Rupert Herbst <rhe8502(at)pm.me>
 Project URL: https://github.com/rhe8502/ghas_report
@@ -546,7 +546,7 @@ def setup_argparse():
     """
     # version, date, and project URL
     version_number = '1.1.0'
-    release_date = '2023-04-13'
+    release_date = '2023-04-14'
     url = 'https://github.com/rhe8502/ghas_report'
 
     # version string
