@@ -2,7 +2,7 @@ name: Email GHAS CSV Reports
 
 on:
   schedule:
-    - cron: '30 23 * * *'
+    - cron: '00 00 * * *' # Run at 00:00 UTC every day
 
 jobs:
   run_script_and_send_email:
@@ -54,7 +54,7 @@ jobs:
       - name: Run Python script
         run: |
           . venv/bin/activate
-          python ghas_report.py -l -lr reports
+          python ghas_report.py --all -lr reports
         env:
           GH_API_KEY: ${{ secrets.GH_API_KEY }}
 
