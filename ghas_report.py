@@ -501,8 +501,8 @@ def load_configuration(args):
         if not api_key:
             raise SystemExit(f"Error: No API key specified, or \"{conf_file}\" not found. Please run the \"ghas_enc_key.py\" script to add your API key.")
     except json.JSONDecodeError as e:
-        raise SystemExit(f"Error loading {e.docname}: {e}\nYou might need to run the \"ghas_enc_key.py\" script to add your API key.")
-    
+        raise SystemExit(f"Error loading {conf_file}: {e}\nYou might need to run the \"ghas_enc_key.py\" script to add your API key.")
+       
     # if the API key is not specified as an environment variable, get the encryption key from the keyfile and decrypt the API key from the config file
     if not os.environ.get("GH_API_KEY"):
         enc_path = config.get('location', {}).get('keyfile','')
