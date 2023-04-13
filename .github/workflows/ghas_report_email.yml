@@ -25,6 +25,7 @@ jobs:
           python -m venv venv
           source venv/bin/activate
           pip install -r ghas_report/requirements.txt
+        working-directory: ${{ github.workspace }}
 
       - name: Generate JSON configuration file
         run: |
