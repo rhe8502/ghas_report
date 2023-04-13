@@ -2,7 +2,7 @@ name: Email CSV Workflow
 
 on:
   schedule:
-    - cron: '15 22 * * *'
+    - cron: '17 21 * * *'
 
 jobs:
   send_csv_files_via_email:
