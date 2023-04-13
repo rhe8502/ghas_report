@@ -2,7 +2,7 @@ name: Email CSV Workflow
 
 on:
   schedule:
-    - cron: '50 20 * * *'
+    - cron: '52 20 * * *'
 
 jobs:
   setup_environment:
@@ -24,7 +24,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Generate JSON configuration file
         run: |
         - name: Generate JSON configuration file
   run: |
