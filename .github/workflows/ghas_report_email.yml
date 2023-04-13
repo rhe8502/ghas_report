@@ -2,7 +2,7 @@ name: Email GHAS CSV Report Workflow
 
 on:
   schedule:
-    - cron: '45 22 * * *'
+    - cron: '47 22 * * *'
 
 jobs:
   run_script_and_send_email:
@@ -71,3 +71,4 @@ jobs:
           from: GitHub Action <rhe8502@gmail.com>
           # content_type: text/html
           attachments: "*.csv"
+        working-directory: ${{ github.workspace }}
