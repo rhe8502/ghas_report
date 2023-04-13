@@ -8,6 +8,9 @@ jobs:
   run_script_and_send_email:
     runs-on: ubuntu-latest
     steps:
+      - name: Print message
+        run: echo "This workflow will run every day at 10:15 PM UTC."
+
       - name: Check out repository
         uses: actions/checkout@v3
 
@@ -49,6 +52,7 @@ jobs:
               }
             }
           }' > ghas_config.json
+
 
       - name: Run Python script
         run: |
