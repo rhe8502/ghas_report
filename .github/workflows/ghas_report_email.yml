@@ -2,7 +2,7 @@ name: Email GHAS CSV Report Workflow
 
 on:
   schedule:
-    - cron: '40 21 * * *'
+    - cron: '50 21 * * *'
 
 jobs:
   setup_environment:
