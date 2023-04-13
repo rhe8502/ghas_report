@@ -2,7 +2,7 @@ name: Email CSV Workflow
 
 on:
   schedule:
-    - cron: '40 20 * * *'
+    - cron: '50 20 * * *'
 
 jobs:
   setup_environment:
@@ -26,28 +26,29 @@ jobs:
 
       - name: Generate JSON configuration file
         run: |
-          echo '{
-            "connection": {
-                    "gh_api_url": "",
-                    "gh_api_key": ""
-                },
-                "location": {
-                    "reports": "",
-                    "keyfile": ""
-                },
-                "projects": {
-                    "SKYNET": {
-                        "owner": "rhe8502",
-                        "organizations": [
-                            "akigakita"
-                        ],
-                        "repositories": [
-                            "sectest"
-                        ]
-                    }
-                }
-            }
-          }' > ghas_config.json
+        - name: Generate JSON configuration file
+  run: |
+    echo '{
+      "connection": {
+        "gh_api_url": "https://api.github.com",
+        "gh_api_key": "'${{ secrets.GH_API_KEY }}'"
+      },
+      "location": {
+        "reports": "",
+        "keyfile": ""
+      },
+      "projects": {
+        "SKYNET": {
+          "owner": "rhe8502",
+          "organizations": [
+            "akigakita"
+          ],
+          "repositories": [
+            "sectest"
+          ]
+        }
+      }
+    }' > ghas_config.json
 
   run_script_and_send_email:
     needs: setup_environment
@@ -66,8 +67,6 @@ jobs:
 
       - name: Run Python script
         run: python ghas_report.py -l
-        env:
-          GH_API_KEY: ${{ secrets.GH_API_KEY }}
 
       - name: Send CSV files via email
         uses: dawidd6/action-send-mail@v3
