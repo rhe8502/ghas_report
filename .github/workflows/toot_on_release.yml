@@ -33,11 +33,11 @@ jobs:
 
         api_base_url = "https://infosec.exchange"
         access_token = os.environ["MASTODON_ACCESS_TOKEN"]
+        release_tag = "${{ github.event.release.tag_name }}"
         release_url = "${{ github.event.release.html_url }}"
 
         Mastodon.api_base_url = api_base_url
         mastodon = Mastodon(access_token=access_token, api_base_url=api_base_url)
-        status = f"🚀 GHAS Reporting Tool v1.0.0 - Initial Release! A Python script to fetch GitHub Advanced Security (GHAS) alerts and generate reports in CSV and JSON formats. Download the release and check the README for setup details {release_url} #GitHub #NewRelease #GHAS #AppSec #InfoSec"
-        print(access_token)
+        status = f"📢 GHAS Reporting Tool {release_tag} - a Python script to fetch GitHub Advanced Security (GHAS) alerts and generate reports in CSV and JSON formats. Download the release and consult the README for setup details.\n#GitHub #NewRelease #GHAS #AppSec #InfoSec\n\n{release_url}"
         mastodon.status_post(status)
         '
