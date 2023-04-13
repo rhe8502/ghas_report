@@ -2,7 +2,7 @@ name: Email GHAS CSV Reports
 
 on:
   schedule:
-    - cron: '00 23 * * *'
+    - cron: '06 23 * * *'
 
 jobs:
   run_script_and_send_email:
