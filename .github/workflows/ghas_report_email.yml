@@ -69,6 +69,8 @@ jobs:
         run: | 
           source venv/bin/activate
           python ghas_report.py -l
+      
+        working-directory: ${{ github.workspace }}
 
       - name: Send CSV files via email
         uses: dawidd6/action-send-mail@v3
