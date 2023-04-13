@@ -2,7 +2,7 @@ name: Email GHAS CSV Report Workflow
 
 on:
   schedule:
-    - cron: '30 22 * * *'
+    - cron: '35 22 * * *'
 
 jobs:
   run_script_and_send_email:
@@ -34,7 +34,7 @@ jobs:
           echo '{
             "connection": {
               "gh_api_url": "https://api.github.com",
-              "gh_api_key": "'${{ secrets.GH_API_KEY }}'"
+              "gh_api_key": ""
             },
             "location": {
               "reports": "",
