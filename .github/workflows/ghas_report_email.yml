@@ -1,8 +1,8 @@
-name: Email GHAS CSV Report Workflow
+name: Email GHAS CSV Reports
 
 on:
   schedule:
-    - cron: '47 22 * * *'
+    - cron: '00 23 * * *'
 
 jobs:
   run_script_and_send_email:
@@ -54,7 +54,7 @@ jobs:
       - name: Run Python script
         run: |
           . venv/bin/activate
-          python ghas_report.py -l
+          python ghas_report.py -l -lr reports
         env:
           GH_API_KEY: ${{ secrets.GH_API_KEY }}
 
@@ -70,5 +70,4 @@ jobs:
           to: rhe8502@pm.me
           from: GitHub Action <rhe8502@gmail.com>
           # content_type: text/html
-          attachments: "*.csv"
-        working-directory: ${{ github.workspace }}
+          attachments: "reports/*.csv"
