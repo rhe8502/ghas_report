@@ -1,0 +1,265 @@
+<html><head><style>body {
+    background-color: black;
+    color: #d4dbe2;
+}
+</style></head><body><h1 id="ghas-reporting">GHAS Reporting</h1>
+<h2 id="description">Description</h2>
+<p>The GHAS Reporting tool is a Python script designed to retrieve various types of GitHub Advanced Security (GHAS) alerts for specified organizations or repositories and generate a report based on the provided options. The output formats supported are CSV and JSON.</p>
+<p>Supported alert types are code scanning (vulnerabilities in source code), secret scanning (exposed sensitive data), and dependabot alerts (security risks and outdated dependencies).</p>
+<p>The script offers flexibility in configuring the report, enabling users to focus on the most relevant security aspects for their organization or repository.</p>
+<p>The GHAS Reporting project consists of two Python scripts: <code>ghas_report.py</code> and <code>ghas_enc_key.py</code>.</p>
+<p>The primary script, <code>ghas_report.py</code>, is designed to retrieve various types of GitHub Advanced Security (GHAS) alerts for specified organizations or repositories and generate a report based on the provided options. The output formats supported are CSV and JSON.</p>
+<p>The main goal of this script is to aid vulnerability management and support development and security teams by saving time and providing valuable insights into the security status of their projects.</p>
+<p>The <code>ghas_enc_key.py</code> script is primarily used for the first-time setup and changing of the GitHub API key, which is stored in encrypted format in the <strong>ghas_conf.json</strong> configuration file. This script ensures the secure storage of the API key and allows for easy updates whenever needed.</p>
+<p>The script can also be executed without a configuration file, in which case the API key must be specified in an environment variable called <code>GHAS_API_KEY</code>.
+During execution of the script the --owner and --repo, or --org options must be specified. The --owner option is used to specify the owner of the repository or organization. The --repo option is used to specify the repository name. The --org option is used to specify the organization name.</p>
+<h3 id="github-advanced-security-ghas-">GitHub Advanced Security (GHAS)</h3>
+<p>GitHub Advanced Security is a suite of security tools provided by GitHub to help protect your code and detect vulnerabilities before they reach production. GHAS includes Code scanning, Secret scanning, and Dependabot alerts. For more information, visit <a href="https://docs.github.com/en/github-ae@latest/code-security">GitHub Advanced Security</a>.</p>
+<p align="center">
+  <img src="./assets/ghas_report.gif" alt="Terminal with GHAS reporting script running">
+</p>
+
+
+<h2 id="prerequisites">Prerequisites</h2>
+<p>To use these scripts, you will need:</p>
+<ol>
+<li>Python 3.x installed on your system.</li>
+<li>A GitHub API key with the appropriate permissions.</li>
+</ol>
+<p>To generate a GitHub API key for an individual repository, follow the instructions <a href="https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token">here</a>.</p>
+<p>For enterprise repositories with Single Sign-On (SSO), follow the instructions <a href="https://docs.github.com/en/enterprise-cloud@latest/authentication/authenticating-with-saml-single-sign-on/authorizing-a-personal-access-token-for-use-with-saml-single-sign-on">here</a>.</p>
+<h2 id="installation-instructions">Installation Instructions</h2>
+<ol>
+<li>Go to the Releases tab and download the latest stable release as a zip file or clone the repository directly.</li>
+<li>Extract the files to a directory of your choice.</li>
+<li>Open a terminal or command prompt and navigate to the directory containing the extracted files.</li>
+<li>Ensure you have Python 3.x installed on your system. You can verify this by running <code>python --version</code> or <code>python3 --version</code> in the terminal or command prompt. If you don&#39;t have Python 3.x installed, download, and install it from the <a href="https://www.python.org/downloads/">official Python website</a>.</li>
+<li>In the terminal or command prompt, run the following command to install the required dependencies:</li>
+</ol>
+<pre><code class="lang-bash">pip <span class="hljs-keyword">install</span> -r requirements.txt
+</code></pre>
+<p>This command installs the necessary packages listed in the <code>requirements.txt</code> file.</p>
+<ol>
+<li>After the dependencies are installed, run the <code>ghas_enc_key.py</code> script to set up the GitHub API key for the first time:</li>
+</ol>
+<pre><code class="lang-bash">python3 ghas_enc_key<span class="hljs-selector-class">.py</span> --api-key
+</code></pre>
+<p>Follow the prompts to enter your GitHub API key. The script will store the API key securely in the <code>ghas_conf.json</code> configuration file.</p>
+<p>Alternatively, you can specify the API key in an environment variable called <code>GHAS_API_KEY</code> and run the script without storing the key in the configuration file. This is useful, if you are using a secret management system to store the API key.</p>
+<ol>
+<li>You are now ready to use the <code>ghas_report.py</code> script to generate reports. For usage instructions and examples, refer to the Usage Examples section in the documentation.</li>
+</ol>
+<h2 id="usage-examples">Usage Examples</h2>
+<p>Before using <code>ghas_report.py</code>, you must run the <code>ghas_enc_key.py</code> script to set up your API key. This script securely stores your GitHub API key in a JSON configuration file.</p>
+<h3 id="example-1-generate-all-alert-reports-in-the-default-csv-format">Example 1: Generate all alert reports in the default CSV format</h3>
+<pre><code class="lang-bash">python3 ghas_report<span class="hljs-selector-class">.py</span> -a
+</code></pre>
+<p>This command generates all alert reports, including Alert Count, Code Scanning, Secret Scanning, and Dependabot alert reports, in the default CSV format.</p>
+<h3 id="example-2-generate-all-open-alerts-report-in-json-format">Example 2: Generate all open alerts report in JSON format</h3>
+<pre><code class="lang-bash">python3 ghas_report<span class="hljs-selector-class">.py</span> -<span class="hljs-selector-tag">a</span> -o -wJ
+</code></pre>
+<p>This command generates all open alert reports, including Alert Count, Code Scanning, Secret Scanning, and Dependabot alert reports and writes the output in JSON format.</p>
+<p>Please note that the Alert Count report lists only open alerts by default, even without specifying the <code>-o</code> option.</p>
+<h3 id="example-3-generate-a-code-scan-alert-report-and-a-secret-scanning-alert-report-in-csv-format">Example 3: Generate a Code Scan alert report and a Secret Scanning alert report in CSV format</h3>
+<pre><code class="lang-bash">python3 ghas_report<span class="hljs-selector-class">.py</span> -c -s
+</code></pre>
+<p>This command generates both a Code Scan alert report and a Secret Scanning alert report in the default CSV format.</p>
+<h3 id="example-4-generate-a-dependabot-alert-report-in-all-formats-and-specify-a-custom-reports-directory">Example 4: Generate a Dependabot alert report in all formats and specify a custom reports directory</h3>
+<pre><code class="lang-bash"><span class="hljs-keyword">python3</span> ghas_report.<span class="hljs-keyword">py</span> -d -wA -<span class="hljs-keyword">lr</span> /path/<span class="hljs-keyword">to</span>/reports
+</code></pre>
+<p>This command generates a Dependabot alert report and writes the output to all supported formats (CSV and JSON) in a custom reports directory specified by <code>/path/to/reports</code>.</p>
+<h3 id="example-5-generate-an-open-alerts-report-in-json-format-with-custom-configuration-and-key-file-locations">Example 5: Generate an open alerts report in JSON format with custom configuration and key file locations</h3>
+<pre><code class="lang-bash"><span class="hljs-keyword">python3</span> ghas_report.<span class="hljs-keyword">py</span> -<span class="hljs-keyword">l</span> -wJ -<span class="hljs-keyword">lc</span> /path/<span class="hljs-keyword">to</span>/ghas_conf.json -lk /path/<span class="hljs-keyword">to</span>/.ghas_env
+</code></pre>
+<p>This command generates an Alert Count report, writes the output in JSON format, and uses custom locations for the configuration file (<code>/path/to/ghas_conf.json</code>) and the encryption key file (<code>/path/to/.ghas_env</code>).</p>
+<p>For more usage examples and options, refer to the options sections for each script in the documentation.</p>
+<h4 id="-ghas_report-py-"><code>ghas_report.py</code></h4>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>-h, --help</td>
+<td>Show help message and exit</td>
+</tr>
+<tr>
+<td>-v, --version</td>
+<td>Show program&#39;s version number and exit</td>
+</tr>
+<tr>
+<td>-a, --all</td>
+<td>Generate all alert reports</td>
+</tr>
+<tr>
+<td>-l, --alerts</td>
+<td>Generate Alert Count report</td>
+</tr>
+<tr>
+<td>-c, --codescan</td>
+<td>Generate Code Scan alert report</td>
+</tr>
+<tr>
+<td>-s, --secretscan</td>
+<td>Generate Secret Scanning alert report</td>
+</tr>
+<tr>
+<td>-d, --dependabot</td>
+<td>Generate Dependabot alert report</td>
+</tr>
+<tr>
+<td>-o, --open</td>
+<td>Generate report(s) for open alerts only</td>
+</tr>
+<tr>
+<td>-n, --owner</td>
+<td>Specify the owner of a GitHub repository, or organization</td>
+</tr>
+<tr>
+<td>-g, --org</td>
+<td>Specify the name of a GitHub organization</td>
+</tr>
+<tr>
+<td>-r, --repo</td>
+<td>Specify the name of a GitHub repository</td>
+</tr>
+<tr>
+<td>-wA, --output-all</td>
+<td>Write output to all formats at once</td>
+</tr>
+<tr>
+<td>-wC, --output-csv</td>
+<td>Write output to a CSV file (default format)</td>
+</tr>
+<tr>
+<td>-wJ, --output-json</td>
+<td>Write output to a JSON file</td>
+</tr>
+<tr>
+<td>-lc \<PATH\>, --config \<PATH\></td>
+<td>Specify file location for the configuration file (&quot;ghas_conf.json&quot;)</td>
+</tr>
+<tr>
+<td>-lk \<PATH\>, --keyfile \<PATH\></td>
+<td>Specify file location for the encryption key file (&quot;.ghas_env&quot;) - overrides the location specified in the configuration file</td>
+</tr>
+<tr>
+<td>-lr \<PATH\>, --reports \<PATH\></td>
+<td>Specify file location for the reports directory - overrides the location specified in the configuration file</td>
+</tr>
+</tbody>
+</table>
+<h4 id="-ghas_enc_key-py-"><code>ghas_enc_key.py</code></h4>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>-h, --help</td>
+<td>Show help message and exit</td>
+</tr>
+<tr>
+<td>-v, --version</td>
+<td>Show program&#39;s version number and exit</td>
+</tr>
+<tr>
+<td>-a, --api-key</td>
+<td>Prompt for a GitHub API key; replaces existing API key or generates a new config &amp; key file if none exist (first-time setup)</td>
+</tr>
+<tr>
+<td>-lc \<PATH\>, --config \<PATH\></td>
+<td>Specify file location for the &quot;ghas_report.py&quot; configuration file (&quot;ghas_conf.json&quot;)</td>
+</tr>
+<tr>
+<td>-lk \<PATH\>, --keyfile \<PATH\></td>
+<td>Specify file location for the &quot;ghas_report.py&quot; encryption key file (&quot;.ghas_env&quot;)</td>
+</tr>
+<tr>
+<td>-lr \<PATH\>, --reports \<PATH\></td>
+<td>Specify file location for the &quot;ghas_report.py&quot; reports directory</td>
+</tr>
+</tbody>
+</table>
+<h2 id="configuration-file">Configuration File</h2>
+<p>The <strong>&quot;ghas_config.json&quot;</strong> JSON configuration file is used to specify connection details, location and project information for the GitHub Advanced Security (GHAS) reporting tool.  A sample configuration file <strong>&quot;ghas_config_example.json&quot;&quot;</strong> is included in the repo. Simply rename the file to <strong>&quot;ghas_config.json&quot;</strong> and run the initial setup script to securely store your GitHub API key, then populate the file with your unique project information.</p>
+<h3 id="connection-section">Connection section</h3>
+<pre><code class="lang-json">{
+    <span class="hljs-attr">"connection"</span>: {
+        <span class="hljs-attr">"gh_api_url"</span>: <span class="hljs-string">"https://api.github.com"</span>,
+        <span class="hljs-attr">"gh_api_key"</span>: <span class="hljs-string">"GITHUB_API_KEY"</span>
+    }
+}
+</code></pre>
+<p>This section specifies the details for connecting to the GitHub API.</p>
+<ul>
+<li><strong>gh_api_url:</strong> The URL for the GitHub API.</li>
+<li><strong>gh_api_key:</strong> Your GitHub API key.</li>
+</ul>
+<h3 id="location-section">Location section</h3>
+<p>If no custom file locations are specified in the configuration file and no command-line options are provided, the default location for both the reports and the key file will be the script directory. The default location for report files is a folder within the script directory, which will be created with the current date as the folder name.</p>
+<pre><code class="lang-json">{
+     <span class="hljs-attr">"location"</span>: {
+             <span class="hljs-attr">"reports"</span>: <span class="hljs-string">""</span>,
+             <span class="hljs-attr">"key_file"</span>: <span class="hljs-string">""</span>
+         }
+}
+</code></pre>
+<p>This section specifies the location of the reports and the encryption key file.</p>
+<ul>
+<li><strong>reports:</strong> The directory path where reports will be generated. If left blank, the script will  reate a folder with the current date as its name in the script directory.</li>
+<li><strong>key_file:</strong> The file path for the encryption key. If left blank, the script will use the default location in the script directory.</li>
+</ul>
+<h3 id="projects-section">Projects section</h3>
+<p>The <code>projects</code> section of the configuration file allows you to define your projects, including the owner, organizations, and repositories associated with each project. You can add multiple projects, each with its own set of organizations and repositories. This setup is useful when working with multiple projects, organizations, and repositories, especially in the context of a GitHub Enterprise account.</p>
+<pre><code class="lang-json">{
+     <span class="hljs-attr">"projects"</span>: {
+             <span class="hljs-attr">"YOUR_PROJECT1"</span>: {
+                 <span class="hljs-attr">"owner"</span>: <span class="hljs-string">"GITHUB_OWNER"</span>,
+                 <span class="hljs-attr">"organizations"</span>: [
+                     <span class="hljs-string">"ORG1"</span>
+                 ],
+                 <span class="hljs-attr">"repositories"</span>: [
+                     <span class="hljs-string">"REPO1"</span>,
+                     <span class="hljs-string">"REPO2"</span>
+                 ]
+             },
+             <span class="hljs-attr">"YOUR_PROJECT2"</span>: {
+                 <span class="hljs-attr">"owner"</span>: <span class="hljs-string">"GITHUB_OWNER"</span>,
+                 <span class="hljs-attr">"organizations"</span>: [
+                     <span class="hljs-string">"ORG1"</span>,
+                     <span class="hljs-string">"ORG2"</span>
+                 ],
+                 <span class="hljs-attr">"repositories"</span>: [
+                     <span class="hljs-string">"REPO1"</span>
+                 ]
+             }
+         }
+}
+</code></pre>
+<p>This section specifies the project information, including the owner, organizations, and repositories.</p>
+<ul>
+<li><strong>YOUR_PROJECT1, YOUR_PROJECT2, etc.:</strong> The name of your project(s). You can use any name you like. This allows you to set up multiple projects with their respective organizations and repositories.</li>
+<li><strong>owner:</strong> The owner of the project(s) on GitHub, or GitHub account owner. This is typically the organization or individual account that owns the repositories and organizations specified.</li>
+<li><strong>organizations:</strong>  A list of the organizations that the project(s) belong to. When working with a GitHub Enterprise account, you may have multiple organizations, each with its own set of repositories.</li>
+<li><strong>repositories:</strong> A list of the repositories that the project(s) consist of. These can be individual repositories or repositories belonging to organizations specified in the <code>organizations</code> field.</li>
+</ul>
+<p>By using this structure, you can customize the script to generate reports for specific projects, organizations, and repositories, making it easier to manage security alerts across a large number of repositories and organizations.</p>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<p>If you encounter any issues while using the GHAS Report scripts, try the following troubleshooting steps:</p>
+<ol>
+<li>Ensure you have the correct permissions for your GitHub API key. The API key should have the necessary permissions to access the repositories and organizations for which you want to generate reports.</li>
+<li>Double-check your file paths for the configuration, encryption key, and report files. Ensure that the paths specified are correct and the files are accessible.</li>
+<li>Make sure you are using a compatible version of Python (3.x) and that all required dependencies are installed.</li>
+<li>If you encounter issues with the generated reports, verify that the chosen output format is supported and that the output file can be created or written to.</li>
+<li>If you are still having issues, consult the <a href="https://docs.github.com/en/rest/">GitHub REST API documentation</a> and the <a href="https://docs.github.com/en/github-ae@latest/code-security">GitHub Advanced Security documentation</a> for additional information.</li>
+</ol>
+<h2 id="license">License</h2>
+<p>The GHAS Report project is licensed under the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>. For more information, see the LICENSE file in the project repository.</p>
+</body></html>
