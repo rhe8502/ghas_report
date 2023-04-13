@@ -2,7 +2,7 @@ name: Email CSV Workflow
 
 on:
   schedule:
-    - cron: '52 20 * * *'
+    - cron: '55 20 * * *'
 
 jobs:
   setup_environment:
@@ -24,30 +24,29 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Generate JSON configuration file
         run: |
-        - name: Generate JSON configuration file
-  run: |
-    echo '{
-      "connection": {
-        "gh_api_url": "https://api.github.com",
-        "gh_api_key": "'${{ secrets.GH_API_KEY }}'"
-      },
-      "location": {
-        "reports": "",
-        "keyfile": ""
-      },
-      "projects": {
-        "SKYNET": {
-          "owner": "rhe8502",
-          "organizations": [
-            "akigakita"
-          ],
-          "repositories": [
-            "sectest"
-          ]
-        }
-      }
-    }' > ghas_config.json
+          echo '{
+            "connection": {
+              "gh_api_url": "https://api.github.com",
+              "gh_api_key": "'${{ secrets.GH_API_KEY }}'"
+            },
+            "location": {
+              "reports": "",
+              "keyfile": ""
+            },
+            "projects": {
+              "SKYNET": {
+                "owner": "rhe8502",
+                "organizations": [
+                  "akigakita"
+                ],
+                "repositories": [
+                  "sectest"
+                ]
+              }
+            }
+          }' > ghas_config.json
 
   run_script_and_send_email:
     needs: setup_environment
