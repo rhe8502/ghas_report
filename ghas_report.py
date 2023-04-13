@@ -1,65 +1,55 @@
 #!/usr/bin/env python3
 #-*- coding: utf-8 -*-
 
-"""GitHub Advanced Security (GHAS) Vulnerability Report Generator
+"""GHAS Reporting Tool
 
-This script retrieves various types of GitHub Advanced Security (GHAS) alerts for a specified 
-organization or repository and generates a report based on the specified options. 
-
-The supported alert types include code scanning alerts, secret scanning alerts, and dependabot
-alerts.
-
-The script requires a configuration file ("ghas_config.json") to retrieve API credentials
-and settings, and a file (".ghas_env") that stores the key.
-
-The API credentials are encrypted using the "ghas_enc_key.py" script, which generates
-and stores an encrypted GitHub API key
-
-Command-line arguments can be passed to specify the alert types to process and the 
-output format of the report. The supported output formats are CSV and JSON, and the 
-default output format is CSV.
-
-Functionality is provided to generate an alert count report, a code scanning alert report, a 
-secret scanning alert report, and a dependabot alert report. Alert reports can be 
-generated for open alerts only using the "-o" flag.
+This script retrieves various types of GitHub Advanced Security (GHAS) alerts for a specified
+organization or repository. The types of alerts include Code scanning alerts, Secret scanning
+alerts, and Dependabot alerts. The script generates reports based on the specified options and
+writes the results to a file in CSV, JSON, or both formats.
 
 The script uses the GitHub API to retrieve alert data and requires valid API credentials. 
-An API key can be added using the "ghas_enc_key.py" script.
+An API key can be specified added using the "ghas_enc_key.py" script, or alternatively
+specified in the GH_API_KEY environment variable.
 
 Usage:
-$ python ghas_report.py [-h] [-v] [-l] [-a] [-c] [-s] [-d] [-o] [-wA] [-wC] [-wJ]
+    python ghas_reporting_tool.py [options]
 
 Options:
--h, --help Show help message and exit.
--v, --version Show program's version number and exit.
--a, --all Generate Alert Count, Code Scanning, Secret Scanning, and Dependabot alert reports.
--l, --alerts Generate Alert Count report of all open alerts.
--c, --codescan Generate Code Scan alert report.
--s, --secretscan Generate Secret Scanning alert report.
--d, --dependabot Generate Dependabot alert report.
--o, --open Only generate reports for open alerts (Alert Count only reports open alerts).
--wA, --output-all Write output to all supported formats at once.
--wC, --output-csv Write output to a CSV file (default format).
--wJ, --output-json Write output to a JSON file.
-
-The script also includes several helper functions to retrieve and process the alert data, including:
-
-    alert_count(api_url, project_data): retrieves the total number of open alerts for a project.
+    -v, --version          Show program's version number and exit
     
-    scan_alerts(api_url, project_data, alert_type, output_type, alert_state): retrieves detailed alert 
-    data for a specific alert type and returns it in the specified output format (CSV or JSON).
+    Alert reports:
+    -a, --all              Generate all alert reports
+    -l, --alerts           Generate Alert Count report of all open alerts
+    -c, --codescan         Generate Code Scan alert report
+    -s, --secretscan       Generate Secret Scanning alert report
+    -d, --dependabot       Generate Dependabot alert report
+    
+    Optional alert report arguments:
+    -o, --open             Generate report(s) for open alerts only
+    -n, --owner            Specify the owner of a GitHub repository, or organization
+    -r, --repo             Specify the name of a GitHub repository
+    -g, --org              Specify the name of a GitHub organization
+   
+    Output file format arguments:
+    -wA, --output-all      Write output to all formats at once
+    -wC, --output-csv      Write output to a CSV file (default format)
+    -wJ, --output-json     Write output to a JSON file
+    
+    Optional location arguments:
+    -lc, --config          Specify file location for the configuration file
+    -lk, --keyfile         Specify file location for the encryption key file
+    -lr, --reports         Specify file location for the reports directory
 
-    write_alerts(alert_data, project_name, output_type, report_dir, call_func): writes the alert data
-    to a file in the specified output format.
-
-The script uses the argparse module to parse command-line arguments and the json and os modules to 
-read data from configuration and environment files.
-
-Note: The script also contains commented-out code for measuring execution time for debugging purposes only.
+Requirements:
+    - Python 3.6 or later
+    - requests
+    - argparse
+    - cryptography
 
 Package: ghas_report.py
-Version: 1.0.0
-Date: 2023-04-06
+Version: 1.1.0
+Date: 2023-04-13
 
 Author: Rupert Herbst <rhe8502(at)pm.me>
 Project URL: https://github.com/rhe8502/ghas_report
@@ -261,7 +251,6 @@ def process_alerts_count(api_url, project_data):
 
     Returns:
         dict: A dictionary containing the raw alert count data and the processed alert count data as lists.
-    
     """
 
     alert_count = []
@@ -316,7 +305,7 @@ def write_alerts(alert_data, project_name, output_type=None, report_dir='', call
         filepath = os.path.join(report_dir, f"{project_name}-{call_func}-{datetime.now():%Y%m%d%H%M%S}.{output_type}")
     else:
         filepath = os.path.join(report_dir, f"{datetime.now().strftime('%Y%m%d')}", f"{project_name}-{call_func}-{datetime.now():%Y%m%d%H%M%S}.{output_type}")
-    
+
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
    
     # Set the column headers for the CSV file depending on the type of alert
@@ -470,58 +459,52 @@ def process_scan_alerts(api_url, project_data, call_func, output_type=None ,stat
     return {'raw_alerts': raw_alerts, 'scan_alerts': scan_alerts}
 
 def load_configuration(args):
-    """Loads configuration from a JSON file, decrypts the API key if,
-    and returns the configuration as a dictionary and headers for API requests.
+    """Load the configuration and API key for making requests to the GitHub API.
 
-    :param args: Command-line arguments parsed by argparse.
-    :type args: argparse.Namespace
-    :return: A tuple containing the configuration dictionary and headers.
-    :rtype: Tuple[Dict[str, Any], Dict[str, str]]
+    This function reads a configuration file and API key from the file system, optionally using
+    command-line arguments to specify the file paths, and returns the parsed configuration and
+    headers for API requests. If the API key is encrypted, it will be decrypted using the
+    encryption key from the specified keyfile. If any required files are missing or the API key
+    is corrupted, an error message will be displayed and the script will exit.
 
-    The function reads the configuration from the 'ghas_config.json' file in the
-    current directory or the directory specified by the '--config' command-line
-    option. If the file is not found or cannot be parsed as JSON, the function
-    raises a 'SystemExit' exception with an error message.
+    Args:
+    args (argparse.Namespace): The command-line arguments passed to the script.
 
-    The function decrypts the API key using the key stored in the '.ghas_env'
-    file in the current directory or the directory specified by the '--keyfile'
-    command-line option, or the path specified in the configuration file, if any.
-    If the file is not found, the function raises a 'SystemExit' exception with
-    an error message.
+    Returns:
+    tuple: A tuple containing the loaded configuration (as a dictionary) and headers
+    (as a dictionary) for making requests to the GitHub API.
 
-    The function returns the configuration as a dictionary and headers for
-    API requests to GitHub. The headers include the API key, as well as the
-    API version number ('2022-11-28').
-
-    Example usage:
-
-    >>> import argparse
-    >>> args = argparse.Namespace()
-    >>> config, headers = load_configuration(args)
+    Raises:
+    SystemExit: If the configuration file, keyfile, or API key is not found or if the
+    API key is corrupted.
     """
 
     # Configuration file name and encryption key file name
     conf_file_name = 'ghas_config.json'
     env_file_name = '.ghas_env'
+    config = {}
 
     # Determine script location and check if a commandline argument was passed for the config file, and if so, use that instead of the default
     script_dir = os.path.dirname(os.path.abspath(__file__))
     conf_file = os.path.join(args.config, conf_file_name) if args.config else os.path.join(script_dir, conf_file_name)
-   
+
+    # Get API key from environment variable
+    api_key = os.environ.get("GH_API_KEY")
+
+    # Load configuration file and get API key from it if not specified as an environment variable
     try:
         with open(conf_file) as f:
             config = json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError) as e:
-        raise SystemExit(f"Error loading {conf_file}: {e}\nYou might need to run the \"ghas_enc_key.py\" script first to generate a new \"{conf_file}\" file.")
+        if not api_key:
+            api_key = config.get('connection', {}).get('gh_api_key', '')
+    except FileNotFoundError as e:
+        if not api_key:
+            raise SystemExit(f"Error: No API key specified, or \"{conf_file}\" not found. Please run the \"ghas_enc_key.py\" script to add your API key.")
+    except json.JSONDecodeError as e:
+        raise SystemExit(f"Error loading {e.docname}: {e}\nYou might need to run the \"ghas_enc_key.py\" script to add your API key.")
     
-    # Checks if an environment variable was set for the API key, and if not, check if the API key was specified in the config file, and if not, raise an error
-    api_key = os.environ.get("GH_API_KEY") or config.get('connection', {}).get('gh_api_key','')
-
-    if not api_key:
-        raise SystemExit(f"Error: No API key found in \"{conf_file}\". Please run the \"ghas_enc_key.py\" script to add your API key.")
-
+    # if the API key is not specified as an environment variable, get the encryption key from the keyfile and decrypt the API key from the config file
     if not os.environ.get("GH_API_KEY"):
-        # Get encryption key from config file
         enc_path = config.get('location', {}).get('keyfile','')
 
         # Check if a commandline argument was passed for the keyfile, if not, check if the keyfile path was specified in the config file, and if not, use the default
@@ -562,13 +545,13 @@ def setup_argparse():
         argparse.ArgumentParser: The configured ArgumentParser object.
     """
     # version, date, and project URL
-    version_number = '1.0.0'
-    release_date = '2023-04-06'
+    version_number = '1.1.0'
+    release_date = '2023-04-13'
     url = 'https://github.com/rhe8502/ghas_report'
-    
+
     # version string
     version_string = f"GHAS Reporting Tool v{version_number} ({url})\nRelease Date: {release_date}\n"
-
+   
     # Command-line arguments parser
     parser = argparse.ArgumentParser(description='''The script is designed to retrieve various types of GitHub Advanced Security (GHAS) alerts for a specified organization or repository. GHAS alerts can include Code scanning alerts, Secret scanning alerts, and Dependabot alerts.
                                                     \nIt will generate a report based on the specified options and write the results to a file. The output format of the report can also be specified using command-line options. The supported formats are CSV and JSON. By default, the output is written to a CSV file. If the -wA option is specified, then the report will be written to all supported formats.''', formatter_class=argparse.RawTextHelpFormatter)
@@ -587,6 +570,9 @@ def setup_argparse():
     # Optional alert reports arguments
     alert_options_group = parser.add_argument_group('Optional alert report arguments')
     alert_options_group.add_argument('-o', '--open', action='store_true', help='generate report(s) for open alerts only (note: this has no effect on Alert Count report "-l)"')
+    alert_options_group.add_argument('-n', '--owner', metavar='<owner>', type=str, help='specify the owner of a GitHub repository, or organization. required if the "--repo" or "--org" options are specified.')
+    alert_options_group.add_argument('-r', '--repo', metavar='<repo>', type=str, help='specify the name of a GitHub repository. This option is mutually exclusive with the "--org" option. The "--owner" option is required if this option is specified.')
+    alert_options_group.add_argument('-g', '--org', metavar='<org>', type=str, help='specify the name of a GitHub organization. This option is mutually exclusive with the "--repo" option. The "--owner" option is required if this option is specified.')
    
     # Output file format arguments
     output_group = parser.add_argument_group('Output file format arguments')
@@ -602,33 +588,64 @@ def setup_argparse():
 
     return parser
 
-def process_args(parser):
-    """Processes the command-line arguments, checks for errors, and extracts alert types, output types, and alert state.
+def check_args_errors(args, parser):
+    """Check for errors in the command-line arguments and display appropriate error messages.
+
+    This function checks the given command-line arguments for inconsistencies or errors, such as
+    missing required arguments, conflicting arguments, or no arguments at all. If any issues are
+    detected, the function will display an error message and the script will exit.
 
     Args:
-        parser (argparse.ArgumentParser): The configured ArgumentParser object.
-
-    Returns:
-        tuple: A tuple containing the following elements:
-            - args (argparse.Namespace): The parsed command-line arguments.
-            - alert_types (list): The selected alert types to process.
-            - output_types (list): The chosen output formats for the report.
-            - alert_state (str): The alert state, 'open' if the --open flag is present, otherwise an empty string.
+        args (argparse.Namespace): The command-line arguments passed to the script.
+        parser (argparse.ArgumentParser): The ArgumentParser object used for parsing the command-line arguments.
 
     Raises:
-        SystemExit: If no arguments are specified or if --output-all is used with --output-csv or --output-json.
+        SystemExit: If any errors or inconsistencies are detected in the command-line arguments.
     """
-    args = parser.parse_args()
 
-    # Check for errors in the arguments passed and print the help menu if an error is found
     if len(sys.argv) == 1:
         parser.print_help()
-        raise SystemExit('\nError: No arguments specified. Please specify at least one alert type.\n')
+        raise SystemExit('\nError: No arguments specified. Please specify at least one alert type --all, --alerts, --codescan, --secretscan, or --dependabot.\n')
+    elif not any([args.all, args.alerts, args.codescan, args.secretscan, args.dependabot]):
+        parser.print_help()
+        raise SystemExit('\nError: No alert type specified. Please specify at least one alert type --all, --alerts, --codescan, --secretscan, or --dependabot.\n')
     elif args.output_all and (args.output_csv or args.output_json):
         parser.print_help()
         raise SystemExit('\nError: --output-all cannot be used together with --output-csv or --output-json\n')
-   
-    # Define the list of alert types to process. If the -A flag is present, include all alert types. Otherwise, include only the alert types that were passed as arguments
+    elif args.repo and args.org:
+        parser.print_help()
+        raise SystemExit('\nError: --repo and --org cannot be used together.\n')
+    elif args.repo and not args.owner:
+        parser.print_help()
+        raise SystemExit('\nError: --repo requires --owner to be specified.\n')
+    elif args.org and not args.owner:
+        parser.print_help()
+        raise SystemExit('\nError: --org requires --owner to be specified.\n')
+    elif args.owner and not (args.repo or args.org):
+        parser.print_help()
+        raise SystemExit('\nError: --owner requires --repo or --org to be specified.\n')
+
+def process_args(parser):
+    """Process the command-line arguments and execute the appropriate functions.
+
+    This function parses the command-line arguments, checks for errors, and based on the provided
+    arguments, calls the necessary functions to generate alert reports in the specified output
+    formats. It also loads the configuration file and handles the processing of the alert types
+    and output types.
+
+    Args:
+        parser (argparse.ArgumentParser): The ArgumentParser object used for parsing the command-line arguments.
+
+    Raises:
+        SystemExit: If any errors or inconsistencies are detected in the command-line arguments.
+    """
+
+    args = parser.parse_args()
+
+    # Call the check_args_errors function with the arguments and parser
+    check_args_errors(args, parser)
+
+    # Define the list of alert types to process. If the -a flag is present, include all alert types. Otherwise, include only the alert types that were passed as arguments
     alert_types = ['alerts', 'codescan', 'secretscan', 'dependabot'] if args.all else [alert_type for alert_type in ['alerts', 'codescan', 'secretscan', 'dependabot'] if getattr(args, alert_type)]
     
     # Define the list of output types to process. If the -wA flag is present, include all output types. Otherwise, include only the output types that were passed as arguments, if no output types are specified, default to CSV
@@ -640,11 +657,20 @@ def process_args(parser):
     # Call the load_configuration function to load the configuration file and assign the returned values to the config and headers variables 
     global headers # Not too happy about this, but it's the only way I could get the headers variable to be accessible throughout the script
     config, headers = load_configuration(args)
-    api_url = config.get('connection', {}).get('gh_api_url', '')
+    api_url = config.get('connection', {}).get('gh_api_url', '') or "https://api.github.com"
     report_dir = args.reports or config.get('location', {}).get('reports', '')
- 
-    # Process each project for the selected alert types
-    for project_name, project_data in config.get('projects', {}).items():
+    
+    # Check if the org or repo arguments are present. If they are, set use_config to False. Otherwise, set use_config to True
+    use_config = not (args.org or args.repo)
+
+    projects = (
+        {args.org or args.owner: {key: value for key, value in [('owner', args.owner), ('organizations', [args.org]), ('repositories', [args.repo])] if value}}
+        if not use_config
+        else config.get('projects', {})
+    )
+
+    # Three nested for loops to iterate through the projects, alert types, and output types
+    for project_name, project_data in projects.items():
         for alert_type in alert_types:
             for output_type in output_types:
                 {
