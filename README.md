@@ -16,6 +16,9 @@ The main goal of this script is to aid vulnerability management and support deve
 
 The `ghas_enc_key.py` script is primarily used for the first-time setup and changing of the GitHub API key, which is stored in encrypted format in the **ghas_conf.json** configuration file. This script ensures the secure storage of the API key and allows for easy updates whenever needed.
 
+The script can also be executed without a configuration file, in which case the API key must be specified in an environment variable called `GHAS_API_KEY`.
+During execution of the script the --owner and --repo, or --org options must be specified. The --owner option is used to specify the owner of the repository or organization. The --repo option is used to specify the repository name. The --org option is used to specify the organization name.
+
 ### GitHub Advanced Security (GHAS)
 
 GitHub Advanced Security is a suite of security tools provided by GitHub to help protect your code and detect vulnerabilities before they reach production. GHAS includes Code scanning, Secret scanning, and Dependabot alerts. For more information, visit [GitHub Advanced Security](https://docs.github.com/en/github-ae@latest/code-security).
@@ -39,10 +42,10 @@ For enterprise repositories with Single Sign-On (SSO), follow the instructions [
 
 ## Installation Instructions
 
-1. Go to the Releases tab and download the latest stable release as a zip file, or clone the repository directly.
+1. Go to the Releases tab and download the latest stable release as a zip file or clone the repository directly.
 2. Extract the files to a directory of your choice.
 3. Open a terminal or command prompt and navigate to the directory containing the extracted files.
-4. Ensure you have Python 3.x installed on your system. You can verify this by running `python --version` or `python3 --version` in the terminal or command prompt. If you don't have Python 3.x installed, download and install it from the [official Python website](https://www.python.org/downloads/).
+4. Ensure you have Python 3.x installed on your system. You can verify this by running `python --version` or `python3 --version` in the terminal or command prompt. If you don't have Python 3.x installed, download, and install it from the [official Python website](https://www.python.org/downloads/).
 5. In the terminal or command prompt, run the following command to install the required dependencies:
 
 ``` bash
@@ -57,7 +60,9 @@ This command installs the necessary packages listed in the `requirements.txt` fi
 python3 ghas_enc_key.py --api-key
 ```
 
- Follow the prompts to enter your GitHub API key. The script will store the API key securely in the `ghas_conf.json` configuration file.
+Follow the prompts to enter your GitHub API key. The script will store the API key securely in the `ghas_conf.json` configuration file.
+
+Alternatively, you can specify the API key in an environment variable called `GHAS_API_KEY` and run the script without storing the key in the configuration file. This is useful, if you are using a secret management system to store the API key.
 
 7. You are now ready to use the `ghas_report.py` script to generate reports. For usage instructions and examples, refer to the Usage Examples section in the documentation.
 
@@ -114,13 +119,16 @@ For more usage examples and options, refer to the options sections for each scri
 | Option | Description |
 | ----------- | ----------- |
 | -h, --help | Show help message and exit |
-|-v, --version | Show program's version number and exit |
+| -v, --version | Show program's version number and exit |
 | -a, --all | Generate all alert reports |
 | -l, --alerts | Generate Alert Count report |
 | -c, --codescan | Generate Code Scan alert report |
 | -s, --secretscan | Generate Secret Scanning alert report |
 | -d, --dependabot | Generate Dependabot alert report |
 | -o, --open | Generate report(s) for open alerts only |
+| -n, --owner | Specify the owner of a GitHub repository, or organization |
+| -g, --org | Specify the name of a GitHub organization |
+| -r, --repo | Specify the name of a GitHub repository |
 | -wA, --output-all | Write output to all formats at once |
 | -wC, --output-csv | Write output to a CSV file (default format) |
 | -wJ, --output-json | Write output to a JSON file |
