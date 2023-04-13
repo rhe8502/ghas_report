@@ -2,10 +2,10 @@ name: Email CSV Workflow
 
 on:
   schedule:
-    - cron: '23 20 * * *'
+    - cron: '40 20 * * *'
 
 jobs:
-  send_csv_files_via_email:
+  setup_environment:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -48,6 +48,21 @@ jobs:
                 }
             }
           }' > ghas_config.json
+
+  run_script_and_send_email:
+    needs: setup_environment
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v3
+
+      - name: Clone specific repository
+        run: git clone https://github.com/rhe8502/ghas_report.git
+
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: 3.x
 
       - name: Run Python script
         run: python ghas_report.py -l
