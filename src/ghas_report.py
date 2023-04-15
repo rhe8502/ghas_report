@@ -51,6 +51,9 @@ Requirements:
     - cryptography
     - openpyxl
 
+Dependencies:
+    - ghas_enc_key.py
+
 Package: ghas_report.py
 Version: 1.2.0-dev
 Date: XXXX-XX-XX
