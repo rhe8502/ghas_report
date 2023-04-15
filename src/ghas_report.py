@@ -71,7 +71,8 @@ License: Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0
 # limitations under the License.
 
 from openpyxl.utils import get_column_letter
-from openpyxl.worksheet.properties import WorksheetProperties, PageSetupProperties
+from openpyxl.styles import PatternFill, Font, Border, Side, Alignment
+from openpyxl.worksheet.hyperlink import Hyperlink
 from cryptography.fernet import Fernet
 from datetime import datetime
 import argparse
@@ -330,7 +331,26 @@ def write_alerts(alert_data, project_name, output_type=None, report_dir='', call
         try:
             workbook = openpyxl.load_workbook(filepath)
         except FileNotFoundError:
-            workbook = openpyxl.Workbook()         
+            workbook = openpyxl.Workbook()
+
+        # Define cell formatting styles
+        header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+        header_font = Font(bold=True, color="FFFFFF", size=11)
+        odd_row_fill = PatternFill(start_color="D9E1F2", end_color="D9E1F2", fill_type="solid")
+        even_row_fill = PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid")
+        data_font = Font(size=11)
+        border_color = "D9E1F2"  # Custom border color (blue)
+        thin_border = Border(
+            left=Side(style='thin', color=border_color),
+            right=Side(style='thin', color=border_color),
+            top=Side(style='thin', color=border_color),
+            bottom=Side(style='thin', color=border_color)
+        )
+        cell_alignment = Alignment(vertical="center", wrap_text=False)
+
+        # Create custom hyperlink style
+        hyperlink_style = Font(color="0000EE", size=11, underline="single")
+        hyperlink_alignment = Alignment(vertical="center", wrap_text=False)
 
         # Add a new worksheet with the specified name
         worksheet = workbook.create_sheet(call_func)
@@ -339,27 +359,48 @@ def write_alerts(alert_data, project_name, output_type=None, report_dir='', call
         if "Sheet" in workbook.sheetnames:
             default_sheet = workbook["Sheet"]
             workbook.remove(default_sheet)
-
-        wsprops = ws.sheet_properties
-        wsprops.tabColor = "1072BA"
-        wsprops.filterMode = True
-        wsprops.pageSetUpPr = PageSetupProperties(fitToPage=True, autoPageBreaks=False)
-        wsprops.outlinePr.summaryBelow = False
-        wsprops.outlinePr.applyStyles = True
-        wsprops.pageSetUpPr.autoPageBreaks = True
-
-        # Write the header row
+    
         for col_num, col_data in enumerate(header_row):
-            worksheet.cell(row=1, column=col_num + 1, value=col_data)
+            cell = worksheet.cell(row=1, column=col_num + 1, value=col_data)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.border = thin_border
+            cell.alignment = cell_alignment
 
-        # Write the data rows
+        # Set filter on the header row
+        worksheet.auto_filter.ref = f"A1:{openpyxl.utils.get_column_letter(len(header_row))}1"
+
+        # Write the data rows and apply alternate row colors
         for row_num, row_data in enumerate(alert_data['scan_alerts'], start=2):
+            row_fill = odd_row_fill if row_num % 2 == 0 else even_row_fill
             for col_num, col_data in enumerate(row_data):
                 cell = worksheet.cell(row=row_num, column=col_num + 1, value=col_data)
+
                 # Check if the cell value is zero, then set the data type to 'n' (number)
                 if col_data == '0':
                     cell.data_type = 'n'
+                
+                cell.fill = row_fill
+                cell.font = data_font
+                cell.border = thin_border
+                cell.alignment = cell_alignment
+        
+        # Set this flag to True if the current sheet contains URLs
+        contains_urls = True  # Change this value based on your sheet's content
 
+        if contains_urls:
+            # Assuming the last column contains URLs, loop through the rows and add hyperlinks
+            url_column = len(header_row)  # Change this value if the URL column is not the last one
+            for row_num in range(2, len(alert_data['scan_alerts']) + 2):
+                cell = worksheet.cell(row=row_num, column=url_column)
+                url = cell.value
+                if url:
+                    hyperlink = Hyperlink(ref=cell.coordinate, location=url)
+                    worksheet._hyperlinks.append(hyperlink)  # Use _hyperlinks instead of hyperlinks
+                    cell.font = hyperlink_style  # Apply the custom hyperlink style
+                    cell.alignment = hyperlink_alignment
+                    # cell.style = "Hyperlink"  # Apply the built-in "Hyperlink" style
+    
         # Save the workbook
         workbook.save(filepath)
         print(f"Wrote {call_func} for \"{project_name}\" to {filepath}")
@@ -368,8 +409,6 @@ def write_alerts(alert_data, project_name, output_type=None, report_dir='', call
         try:
             with open(filepath, 'w', encoding='utf-8', newline='') as f:
                 writer = csv.writer(f) if output_type == 'csv' else None
-                # header_row = scan_options.get(call_func, scan_options['code_scan']) if output_type == 'csv' else None
-
                 if output_type == 'json':
                     json.dump(alert_data['raw_alerts'], f, indent=4)
                     print(f"Wrote {call_func} for \"{project_name}\" to {filepath}")
