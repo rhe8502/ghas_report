@@ -352,8 +352,8 @@ def write_alerts(alert_data, project_name, output_type=None, report_dir='', call
         hyperlink_style = Font(color="0000EE", size=11, underline="single")
         hyperlink_alignment = Alignment(vertical="center", wrap_text=False)
 
-        # Add a new worksheet with the specified name
-        worksheet = workbook.create_sheet(call_func)
+        # Add a new ws with the specified name
+        ws = workbook.create_sheet(call_func)
 
         # Remove the default "Sheet" if it exists
         if "Sheet" in workbook.sheetnames:
@@ -361,20 +361,20 @@ def write_alerts(alert_data, project_name, output_type=None, report_dir='', call
             workbook.remove(default_sheet)
     
         for col_num, col_data in enumerate(header_row):
-            cell = worksheet.cell(row=1, column=col_num + 1, value=col_data)
+            cell = ws.cell(row=1, column=col_num + 1, value=col_data)
             cell.fill = header_fill
             cell.font = header_font
             cell.border = thin_border
             cell.alignment = cell_alignment
 
         # Set filter on the header row
-        worksheet.auto_filter.ref = f"A1:{openpyxl.utils.get_column_letter(len(header_row))}1"
+        ws.auto_filter.ref = f"A1:{openpyxl.utils.get_column_letter(len(header_row))}1"
 
         # Write the data rows and apply alternate row colors
         for row_num, row_data in enumerate(alert_data['scan_alerts'], start=2):
             row_fill = odd_row_fill if row_num % 2 == 0 else even_row_fill
             for col_num, col_data in enumerate(row_data):
-                cell = worksheet.cell(row=row_num, column=col_num + 1, value=col_data)
+                cell = ws.cell(row=row_num, column=col_num + 1, value=col_data)
 
                 # Check if the cell value is zero, then set the data type to 'n' (number)
                 if col_data == '0':
@@ -392,11 +392,11 @@ def write_alerts(alert_data, project_name, output_type=None, report_dir='', call
             # Assuming the last column contains URLs, loop through the rows and add hyperlinks
             url_column = len(header_row)  # Change this value if the URL column is not the last one
             for row_num in range(2, len(alert_data['scan_alerts']) + 2):
-                cell = worksheet.cell(row=row_num, column=url_column)
+                cell = ws.cell(row=row_num, column=url_column)
                 url = cell.value
                 if url:
                     hyperlink = Hyperlink(ref=cell.coordinate, location=url)
-                    worksheet._hyperlinks.append(hyperlink)
+                    ws._hyperlinks.append(hyperlink)
                     cell.font = hyperlink_style
                     cell.alignment = hyperlink_alignment
 
@@ -406,21 +406,25 @@ def write_alerts(alert_data, project_name, output_type=None, report_dir='', call
             column_letter = openpyxl.utils.get_column_letter(col_num)
 
             for row_num in range(1, len(alert_data['scan_alerts']) + 3):  # +3 to include header and one extra row for safety
-                cell_value = str(worksheet.cell(row=row_num, column=col_num).value)
+                cell_value = str(ws.cell(row=row_num, column=col_num).value)
                 cell_length = len(cell_value)
                 max_length = max(max_length, cell_length)
 
             # Add some padding to the maximum length
-            max_length += 2
+            #max_length += 2
 
             # Set the column width
-            worksheet.column_dimensions[column_letter].width = max_length
+            ws.column_dimensions[column_letter].width = max_length
 
         # Add extra padding for the header row to compensate for the filter dropdown icon
-        header_padding = 3  # Adjust this value as needed
+        header_padding = 5  # Adjust this value as needed
         for col_num, col_data in enumerate(header_row, start=1):
             column_letter = openpyxl.utils.get_column_letter(col_num)
-            worksheet.column_dimensions[column_letter].width += header_padding
+            ws.column_dimensions[column_letter].width += header_padding
+        
+
+        # Freeze top row
+        ws.freeze_panes = "A2"
 
         # Save workbook
         workbook.save(filepath)
