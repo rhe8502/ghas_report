@@ -302,7 +302,29 @@ def write_xlsx(header_row, alert_data, project_name, filepath, call_func):
         wb = openpyxl.load_workbook(filepath)
     except FileNotFoundError:
         wb = openpyxl.Workbook()
+    
+    # Modern grey color scheme
+    header_fill = PatternFill(start_color="3D3D3D", end_color="3D3D3D", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF", size=11)
+    odd_row_fill = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")
+    even_row_fill = PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid")
+    data_font = Font(size=11)
+    border_color = "BFBFBF"  # Custom border color (grey)
+    thin_border = Border(
+        left=Side(style='thin', color=border_color),
+        right=Side(style='thin', color=border_color),
+        top=Side(style='thin', color=border_color),
+        bottom=Side(style='thin', color=border_color)
+    )
 
+    cell_alignment = Alignment(vertical="center", wrap_text=False)
+
+    # Create custom hyperlink style
+    hyperlink_style = Font(color="1C1C1C", size=11, underline="single")
+    hyperlink_alignment = Alignment(vertical="center", wrap_text=False)
+
+    # Modern blue color scheme - uncomment to use - comment out Modern grey color scheme above
+    '''
     # Define cell formatting styles
     header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
     header_font = Font(bold=True, color="FFFFFF", size=11)
@@ -322,6 +344,7 @@ def write_xlsx(header_row, alert_data, project_name, filepath, call_func):
     # Create custom hyperlink style
     hyperlink_style = Font(color="0000EE", size=11, underline="single")
     hyperlink_alignment = Alignment(vertical="center", wrap_text=False)
+    '''
 
     # Add a new worksheet with the name of the function calling write_xlsx
     ws = wb.create_sheet(call_func)
@@ -347,15 +370,15 @@ def write_xlsx(header_row, alert_data, project_name, filepath, call_func):
         for col_num, col_data in enumerate(row_data):
             cell = ws.cell(row=row_num, column=col_num + 1, value=col_data)
 
-            # Check if the cell value is zero, then set the data type to 'n' (number)
+               # Check if the cell value is zero, then set the data type to 'n' (number)
             if col_data == '0':
                 cell.data_type = 'n'
-            
+    
             cell.fill = row_fill
             cell.font = data_font
             cell.border = thin_border
             cell.alignment = cell_alignment
-    
+
     # Set this flag to True if the current sheet contains URLs
     contains_urls = True  # Change this value based on your sheet's content
 
