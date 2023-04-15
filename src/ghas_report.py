@@ -44,8 +44,9 @@ Options:
 Requirements:
     - Python 3.6 or later
     - requests
-    - argparse
     - cryptography
+    - xlxswriter
+
 
 Package: ghas_report.py
 Version: 1.1.0
@@ -69,8 +70,10 @@ License: Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from openpyxl.utils import get_column_letter
 from cryptography.fernet import Fernet
 from datetime import datetime
+# import xlsxwriter
 import argparse
 import csv
 import json
@@ -79,6 +82,8 @@ import os
 import sys
 import time
 import re
+import openpyxl
+
 
 def api_error_response(response):
     """Generate error message from API response.
@@ -279,7 +284,7 @@ def process_alerts_count(api_url, project_data):
 
     return {'raw_alerts': alert_count, 'scan_alerts': alert_count}
 
-def write_alerts(alert_data, project_name, output_type=None, report_dir='', call_func=None):
+def write_alerts(alert_data, project_name, output_type=None, report_dir='', call_func=None, time_stamp=None):
     """Writes the processed scan alert data to a file in the specified format (CSV or JSON).
 
     Description:
@@ -297,14 +302,16 @@ def write_alerts(alert_data, project_name, output_type=None, report_dir='', call
     """
 
     # Set output type to CSV is none defined
-    # output_type = output_type if output_type is not None else 'csv'
     output_type = 'csv' if output_type is None else output_type
-    
+
+    # Set scan type to GHAS-Report if xlsx is defined, otherwise set it to the call_func
+    scan_type = 'GHAS_Report' if output_type == 'xlsx' else call_func
+
     # Check if a report path is defined and create the file path, otherwise create a folder for the current date and create the file path
     if report_dir:
-        filepath = os.path.join(report_dir, f"{project_name}-{call_func}-{datetime.now():%Y%m%d%H%M%S}.{output_type}")
+        filepath = os.path.join(report_dir, f"{project_name}-{scan_type}-{time_stamp}.{output_type}")
     else:
-        filepath = os.path.join(report_dir, f"{datetime.now().strftime('%Y%m%d')}", f"{project_name}-{call_func}-{datetime.now():%Y%m%d%H%M%S}.{output_type}")
+        filepath = os.path.join(report_dir, f"{datetime.now().strftime('%Y%m%d')}", f"{project_name}-{scan_type}-{time_stamp}.{output_type}")
 
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
    
@@ -315,22 +322,55 @@ def write_alerts(alert_data, project_name, output_type=None, report_dir='', call
         'secret_scan': ['Alert', 'Organization', 'Repository', 'Date Created', 'Date Updated', 'Days Open', 'State', 'Resolved At', 'Resolved By', 'Resolved Reason', 'Secret Type Name', 'Secret Type', 'GitHub URL'],
         'dependabot_scan': ['Alert', 'Organization', 'Repository', 'Date Created', 'Date Updated', 'Days Open', 'Severity', 'State', 'Package Name', 'CVE ID', 'Summary', 'Fixed At', 'Dismissed At', 'Dismissed By', 'Dismissed Reason', 'Dismissed Comment', 'Scope', 'Manifest ID', 'GitHub URL']
     }
-    
-    # Write the alert data to a file in the specified format
-    try:
-        with open(filepath, 'w', encoding='utf-8', newline='') as f:
-            writer = csv.writer(f) if output_type == 'csv' else None
-            header_row = scan_options.get(call_func, scan_options['code_scan']) if output_type == 'csv' else None
 
-            if output_type == 'json':
-                json.dump(alert_data['raw_alerts'], f, indent=4)
-                print(f"Wrote {call_func} for \"{project_name}\" to {filepath}")
-            elif output_type == 'csv':
-                writer.writerow(header_row)
-                writer.writerows(alert_data['scan_alerts'])
-                print(f"Wrote {call_func} for \"{project_name}\" to {filepath}")
-    except IOError as e:
-        raise SystemExit(f"Error writing to {e.filename}: {e}")
+    # Set the header row
+    header_row = scan_options.get(call_func, [])
+    
+    if output_type == 'xlsx':
+        try:
+            workbook = openpyxl.load_workbook(filepath)
+        except FileNotFoundError:
+            workbook = openpyxl.Workbook()         
+
+        # Add a new worksheet with the specified name
+        worksheet = workbook.create_sheet(call_func)
+
+        # Remove the default "Sheet" if it exists
+        if "Sheet" in workbook.sheetnames:
+            default_sheet = workbook["Sheet"]
+            workbook.remove(default_sheet)
+
+        # Write the header row
+        for col_num, col_data in enumerate(header_row):
+            worksheet.cell(row=1, column=col_num + 1, value=col_data)
+
+        # Write the data rows
+        for row_num, row_data in enumerate(alert_data['scan_alerts'], start=2):
+            for col_num, col_data in enumerate(row_data):
+                cell = worksheet.cell(row=row_num, column=col_num + 1, value=col_data)
+                # Check if the cell value is zero, then set the data type to 'n' (number)
+                if col_data == '0':
+                    cell.data_type = 'n'
+
+        # Save the workbook
+        workbook.save(filepath)
+        print(f"Wrote {call_func} for \"{project_name}\" to {filepath}")
+    else:
+        # Write the alert data to a file in the specified format
+        try:
+            with open(filepath, 'w', encoding='utf-8', newline='') as f:
+                writer = csv.writer(f) if output_type == 'csv' else None
+                # header_row = scan_options.get(call_func, scan_options['code_scan']) if output_type == 'csv' else None
+
+                if output_type == 'json':
+                    json.dump(alert_data['raw_alerts'], f, indent=4)
+                    print(f"Wrote {call_func} for \"{project_name}\" to {filepath}")
+                elif output_type == 'csv':
+                    writer.writerow(header_row)
+                    writer.writerows(alert_data['scan_alerts'])
+                    print(f"Wrote {call_func} for \"{project_name}\" to {filepath}")
+        except IOError as e:
+            raise SystemExit(f"Error writing to {e.filename}: {e}")
 
 def safe_get(alert, keys, default=''):
     """Safely retrieves the value from a nested dictionary using a list of keys.
@@ -578,6 +618,7 @@ def setup_argparse():
     output_group = parser.add_argument_group('Output file format arguments')
     output_group.add_argument('-wA', '--output-all', action='store_true', help='write output to all formats at once')
     output_group.add_argument('-wC', '--output-csv', action='store_true', help='write output to a CSV file (default format)')
+    output_group.add_argument('-wX', '--output-xlsx', action='store_true', help='write output to an MS Excel xlsx file')
     output_group.add_argument('-wJ', '--output-json', action='store_true', help='write output to a JSON file')
 
     # Optional location arguments
@@ -649,7 +690,7 @@ def process_args(parser):
     alert_types = ['alerts', 'codescan', 'secretscan', 'dependabot'] if args.all else [alert_type for alert_type in ['alerts', 'codescan', 'secretscan', 'dependabot'] if getattr(args, alert_type)]
     
     # Define the list of output types to process. If the -wA flag is present, include all output types. Otherwise, include only the output types that were passed as arguments, if no output types are specified, default to CSV
-    output_types = ['csv', 'json'] if args.output_all else [output_type for output_type in ['csv', 'json'] if getattr(args, f'output_{output_type}')] or ['csv']
+    output_types = ['csv', 'xlsx', 'json'] if args.output_all else [output_type for output_type in ['csv', 'xlsx', 'json'] if getattr(args, f'output_{output_type}')] or ['csv']
 
     # Set state to 'open' if the -o ,or --open flag is present
     alert_state = 'open' if args.open else ''
@@ -659,6 +700,7 @@ def process_args(parser):
     config, headers = load_configuration(args)
     api_url = config.get('connection', {}).get('gh_api_url', '') or "https://api.github.com"
     report_dir = args.reports or config.get('location', {}).get('reports', '')
+    time_stamp = datetime.now().strftime('%Y%m%d%H%M%S')
     
     # Check if the org or repo arguments are present. If they are, set use_config to False. Otherwise, set use_config to True
     use_config = not (args.org or args.repo)
@@ -674,10 +716,10 @@ def process_args(parser):
         for alert_type in alert_types:
             for output_type in output_types:
                 {
-                    'alerts': lambda: write_alerts(process_alerts_count(api_url, project_data), project_name, output_type, report_dir, call_func='alert_count'),
-                    'codescan': lambda output_type=output_type: write_alerts(process_scan_alerts(api_url, project_data, 'codescan', output_type, alert_state), project_name, output_type, report_dir, call_func='code_scan'),
-                    'secretscan': lambda output_type=output_type: write_alerts(process_scan_alerts(api_url, project_data, 'secretscan', output_type, alert_state), project_name, output_type, report_dir, call_func='secret_scan'),
-                    'dependabot': lambda output_type=output_type: write_alerts(process_scan_alerts(api_url, project_data, 'dependabot', output_type, alert_state), project_name, output_type, report_dir, call_func='dependabot_scan'),
+                    'alerts': lambda: write_alerts(process_alerts_count(api_url, project_data), project_name, output_type, report_dir, call_func='alert_count', time_stamp=time_stamp),
+                    'codescan': lambda output_type=output_type: write_alerts(process_scan_alerts(api_url, project_data, 'codescan', output_type, alert_state), project_name, output_type, report_dir, call_func='code_scan', time_stamp=time_stamp),
+                    'secretscan': lambda output_type=output_type: write_alerts(process_scan_alerts(api_url, project_data, 'secretscan', output_type, alert_state), project_name, output_type, report_dir, call_func='secret_scan', time_stamp=time_stamp),
+                    'dependabot': lambda output_type=output_type: write_alerts(process_scan_alerts(api_url, project_data, 'dependabot', output_type, alert_state), project_name, output_type, report_dir, call_func='dependabot_scan', time_stamp=time_stamp),
                 }[alert_type]()
 
 def execution_time(start_time):
