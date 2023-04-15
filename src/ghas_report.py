@@ -6,7 +6,7 @@
 This script retrieves various types of GitHub Advanced Security (GHAS) alerts for a specified
 organization or repository. The types of alerts include Code scanning alerts, Secret scanning
 alerts, and Dependabot alerts. The script generates reports based on the specified options and
-writes the results to a file in CSV, JSON, or both formats.
+writes the results to a file in CSV, XLSX, JSON, or all formats.
 
 The script uses the GitHub API to retrieve alert data and requires valid API credentials. 
 An API key can be specified added using the "ghas_enc_key.py" script, or alternatively
@@ -15,48 +15,51 @@ specified in the GH_API_KEY environment variable.
 Usage:
     python ghas_reporting_tool.py [options]
 
-Options:
-    -v, --version          Show program's version number and exit
-    
-    Alert reports:
-    -a, --all              Generate all alert reports
-    -l, --alerts           Generate Alert Count report of all open alerts
-    -c, --codescan         Generate Code Scan alert report
-    -s, --secretscan       Generate Secret Scanning alert report
-    -d, --dependabot       Generate Dependabot alert report
-    
-    Optional alert report arguments:
-    -o, --open             Generate report(s) for open alerts only
-    -n, --owner            Specify the owner of a GitHub repository, or organization
-    -r, --repo             Specify the name of a GitHub repository
-    -g, --org              Specify the name of a GitHub organization
-   
-    Output file format arguments:
-    -wA, --output-all      Write output to all formats at once
-    -wC, --output-csv      Write output to a CSV file (default format)
-    -wJ, --output-json     Write output to a JSON file
-    
-    Optional location arguments:
-    -lc, --config          Specify file location for the configuration file
-    -lk, --keyfile         Specify file location for the encryption key file
-    -lr, --reports         Specify file location for the reports directory
+options:
+  -h, --help            show this help message and exit
+  -v, --version         show program's version number and exit
+
+Generate alert reports:
+  -a, --all             generate Alert Count, Code Scanning, Secret Scanning, and Dependabot alert reports
+  -l, --alerts          generate Alert Count report of all open alerts
+  -c, --codescan        generate Code Scan alert report
+  -s, --secretscan      generate Secret Scanning alert report
+  -d, --dependabot      generate Dependabot alert report
+
+Optional alert state arguments:
+  -o, --open            generate report(s) for open alerts only - note: this setting has no effect on the alert count report "--alerts", which only includes open alerts
+
+Output file format arguments:
+  -wA, --output-all     write output to all formats at once
+  -wC, --output-csv     write output to a CSV file (default format)
+  -wX, --output-xlsx    write output to a Microsoft Excel file
+  -wJ, --output-json    write output to a JSON file
+
+Optional alert report arguments:
+  -n, --owner           specify the owner of a GitHub repository, or organization. required if the "--repo" or "--org" options are specified.
+  -g, --org             specify the name of a GitHub organization. This option is mutually exclusive with the "--repo" option. The "--owner" option is required if this option is specified.
+  -r, --repo            specify the name of a GitHub repository. This option is mutually exclusive with the "--org" option. The "--owner" option is required if this option is specified.
+
+Optional location arguments:
+  -lc, --config         specify file location for the configuration file ("ghas_conf.json")
+  -lk, --keyfile        specify file location for the encryption key file (".ghas_env") - overrides the location specified in the configuration file
+  -lr, --reports        specify file location for the reports directory - overrides the location specified in the configuration file
 
 Requirements:
     - Python 3.6 or later
     - requests
     - cryptography
-    - xlxswriter
-
+    - openpyxl
 
 Package: ghas_report.py
-Version: 1.1.0
-Date: 2023-04-14
+Version: 1.2.0-dev
+Date: XXXX-XX-XX
 
 Author: Rupert Herbst <rhe8502(at)pm.me>
 Project URL: https://github.com/rhe8502/ghas_report
 License: Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 """
-# Copyright (c) 2023 Rupert Herbst
+# Copyright (C) 2023 Rupert Herbst
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -84,7 +87,6 @@ import sys
 import time
 import re
 import openpyxl
-
 
 def api_error_response(response):
     """Generate error message from API response.
@@ -282,6 +284,17 @@ def process_alerts_count(api_url, project_data):
     return {'raw_alerts': alert_count, 'scan_alerts': alert_count}
 
 def write_xlsx(header_row, alert_data, project_name, filepath, call_func):
+    """Writes alert data to an XLSX file.
+
+    This function writes the given alert data to an XLSX file. 
+
+    Args:
+    header_row (list): A list of column header labels for the XLSX file.
+    alert_data (dict): A dictionary containing the alert data to be written to the XLSX file.
+    project_name (str): The name of the project for which the alert data is being written.
+    filepath (str): The full file path where the XLSX file will be saved.
+    call_func (str): The function calling write_xlsx, used to set the sheet name and select appropriate headers for the output file.
+    """
     try:
         wb = openpyxl.load_workbook(filepath)
     except FileNotFoundError:
@@ -300,13 +313,14 @@ def write_xlsx(header_row, alert_data, project_name, filepath, call_func):
         top=Side(style='thin', color=border_color),
         bottom=Side(style='thin', color=border_color)
     )
+
     cell_alignment = Alignment(vertical="center", wrap_text=False)
 
     # Create custom hyperlink style
     hyperlink_style = Font(color="0000EE", size=11, underline="single")
     hyperlink_alignment = Alignment(vertical="center", wrap_text=False)
 
-    # Add a new ws with the specified name
+    # Add a new worksheet with the name of the function calling write_xlsx
     ws = wb.create_sheet(call_func)
 
     # Remove the default "Sheet" if it exists
@@ -403,10 +417,12 @@ def write_xlsx(header_row, alert_data, project_name, filepath, call_func):
     print(f"Wrote {call_func} for \"{project_name}\" to {filepath}")
 
 def write_alerts(alert_data, project_name, output_type=None, report_dir='', call_func=None, time_stamp=None):
-    """Writes the processed scan alert data to a file in the specified format (CSV or JSON).
+    """Writes the processed scan alert data to a file in the specified format (CSV, XLSX, or JSON).
 
     Description:
-        The function writes the processed scan alert data to a file in the specified output format (CSV or JSON). It sets the column headers for the CSV file depending on the type of alert. If the output type is not specified, it defaults to 'csv'. The function creates a file path based on the report directory, project name, alert type, and the current date and time.
+        The function writes the processed scan alert data to a file in the specified output format (CSV, XLSX, or JSON).
+        It sets the column headers for the CSV file depending on the type of alert. If the output type is not specified, it defaults to 'csv'.
+        The function creates a file path based on the report directory, project name, alert type, and the current date and time.
 
     Args:
         alert_data (dict): A dictionary containing processed alert data.
@@ -500,7 +516,6 @@ def process_scan_alerts(api_url, project_data, call_func, output_type=None ,stat
     Returns:
         dict: A dictionary containing raw_alerts and processed scan_alerts.
     """
-
     raw_alerts = []
     scan_alerts = []
 
@@ -606,7 +621,6 @@ def load_configuration(args):
     SystemExit: If the configuration file, keyfile, or API key is not found or if the
     API key is corrupted.
     """
-
     # Configuration file name and encryption key file name
     conf_file_name = 'ghas_config.json'
     env_file_name = '.ghas_env'
@@ -672,17 +686,19 @@ def setup_argparse():
     Returns:
         argparse.ArgumentParser: The configured ArgumentParser object.
     """
-    # version, date, and project URL
-    version_number = '1.1.0'
-    release_date = '2023-04-14'
+    # Version number, release date, URL, license, and author
+    version_number = '1.2.0-dev'
+    release_date = 'XXXX-XX-XX'
+    license = 'Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0)'
     url = 'https://github.com/rhe8502/ghas_report'
+    author = "Rupert Herbst <rhe8502(at)pm.me>"
 
     # version string
-    version_string = f"GHAS Reporting Tool v{version_number} ({url})\nRelease Date: {release_date}\n"
-   
+    version_string = f"\n\nGitHub Advanced Security Reporting Tool v{version_number} ({release_date})\n\n{license}\nProject URL: {url}\n\nWritten by {author}"
+
     # Command-line arguments parser
     parser = argparse.ArgumentParser(description='''The script is designed to retrieve various types of GitHub Advanced Security (GHAS) alerts for a specified organization or repository. GHAS alerts can include Code scanning alerts, Secret scanning alerts, and Dependabot alerts.
-                                                    \nIt will generate a report based on the specified options and write the results to a file. The output format of the report can also be specified using command-line options. The supported formats are CSV and JSON. By default, the output is written to a CSV file. If the -wA option is specified, then the report will be written to all supported formats.''', formatter_class=argparse.RawTextHelpFormatter)
+                                                    \nThe script will generate a report based on the specified options and write the results to a file. The output format of the report can be specified using command-line options. The supported formats are CSV, XLSX and JSON. If no file format argument is specified then the output is written to a CSV file. If the -wA option is specified, then the report(s) will be written to all supported formats.''', formatter_class=argparse.RawTextHelpFormatter)
 
     # Options group
     parser.add_argument('-v', '--version', action='version', version=(version_string), help="show program's version number and exit")
@@ -695,19 +711,22 @@ def setup_argparse():
     alert_group.add_argument('-s', '--secretscan', action='store_true', help='generate Secret Scanning alert report')
     alert_group.add_argument('-d', '--dependabot', action='store_true', help='generate Dependabot alert report')
 
-    # Optional alert reports arguments
-    alert_options_group = parser.add_argument_group('Optional alert report arguments')
-    alert_options_group.add_argument('-o', '--open', action='store_true', help='generate report(s) for open alerts only (note: this has no effect on Alert Count report "-l)"')
-    alert_options_group.add_argument('-n', '--owner', metavar='<owner>', type=str, help='specify the owner of a GitHub repository, or organization. required if the "--repo" or "--org" options are specified.')
-    alert_options_group.add_argument('-g', '--org', metavar='<org>', type=str, help='specify the name of a GitHub organization. This option is mutually exclusive with the "--repo" option. The "--owner" option is required if this option is specified.')
-    alert_options_group.add_argument('-r', '--repo', metavar='<repo>', type=str, help='specify the name of a GitHub repository. This option is mutually exclusive with the "--org" option. The "--owner" option is required if this option is specified.')
-   
+    # Optional alert state arguments
+    alert_state_group = parser.add_argument_group('Optional alert state arguments')
+    alert_state_group.add_argument('-o', '--open', action='store_true', help='generate report(s) for open alerts only - note: this setting has no effect on the alert count report "--alerts", which only includes open alerts')
+
     # Output file format arguments
     output_group = parser.add_argument_group('Output file format arguments')
     output_group.add_argument('-wA', '--output-all', action='store_true', help='write output to all formats at once')
     output_group.add_argument('-wC', '--output-csv', action='store_true', help='write output to a CSV file (default format)')
-    output_group.add_argument('-wX', '--output-xlsx', action='store_true', help='write output to an MS Excel xlsx file')
+    output_group.add_argument('-wX', '--output-xlsx', action='store_true', help='write output to a Microsoft Excel file')
     output_group.add_argument('-wJ', '--output-json', action='store_true', help='write output to a JSON file')
+
+    # Optional alert reports arguments
+    alert_options_group = parser.add_argument_group('Optional alert report arguments')
+    alert_options_group.add_argument('-n', '--owner', metavar='<owner>', type=str, help='specify the owner of a GitHub repository, or organization. required if the "--repo" or "--org" options are specified.')
+    alert_options_group.add_argument('-g', '--org', metavar='<org>', type=str, help='specify the name of a GitHub organization. This option is mutually exclusive with the "--repo" option. The "--owner" option is required if this option is specified.')
+    alert_options_group.add_argument('-r', '--repo', metavar='<repo>', type=str, help='specify the name of a GitHub repository. This option is mutually exclusive with the "--org" option. The "--owner" option is required if this option is specified.')
 
     # Optional location arguments
     location_options_group = parser.add_argument_group('Optional location arguments')
@@ -731,7 +750,6 @@ def check_args_errors(args, parser):
     Raises:
         SystemExit: If any errors or inconsistencies are detected in the command-line arguments.
     """
-
     if len(sys.argv) == 1:
         parser.print_help()
         raise SystemExit('\nError: No arguments specified. Please specify at least one alert type --all, --alerts, --codescan, --secretscan, or --dependabot.\n')
@@ -768,7 +786,6 @@ def process_args(parser):
     Raises:
         SystemExit: If any errors or inconsistencies are detected in the command-line arguments.
     """
-
     args = parser.parse_args()
 
     # Call the check_args_errors function with the arguments and parser
