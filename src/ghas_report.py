@@ -284,9 +284,9 @@ def process_alerts_count(api_url, project_data):
 def write_xlsx(header_row, alert_data, project_name, filepath, call_func):
 
     try:
-        workbook = openpyxl.load_workbook(filepath)
+        wb = openpyxl.load_workbook(filepath)
     except FileNotFoundError:
-        workbook = openpyxl.Workbook()
+        wb = openpyxl.Workbook()
 
     # Define cell formatting styles
     header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
@@ -308,12 +308,12 @@ def write_xlsx(header_row, alert_data, project_name, filepath, call_func):
     hyperlink_alignment = Alignment(vertical="center", wrap_text=False)
 
     # Add a new ws with the specified name
-    ws = workbook.create_sheet(call_func)
+    ws = wb.create_sheet(call_func)
 
     # Remove the default "Sheet" if it exists
-    if "Sheet" in workbook.sheetnames:
-        default_sheet = workbook["Sheet"]
-        workbook.remove(default_sheet)
+    if "Sheet" in wb.sheetnames:
+        default_sheet = wb["Sheet"]
+        wb.remove(default_sheet)
 
     for col_num, col_data in enumerate(header_row):
         cell = ws.cell(row=1, column=col_num + 1, value=col_data)
@@ -381,7 +381,7 @@ def write_xlsx(header_row, alert_data, project_name, filepath, call_func):
     ws.freeze_panes = "A2"
 
     # Save workbook
-    workbook.save(filepath)
+    wb.save(filepath)
     print(f"Wrote {call_func} for \"{project_name}\" to {filepath}")
 
 def write_alerts(alert_data, project_name, output_type=None, report_dir='', call_func=None, time_stamp=None):
