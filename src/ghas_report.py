@@ -71,9 +71,9 @@ License: Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0
 # limitations under the License.
 
 from openpyxl.utils import get_column_letter
+from openpyxl.worksheet.properties import WorksheetProperties, PageSetupProperties
 from cryptography.fernet import Fernet
 from datetime import datetime
-# import xlsxwriter
 import argparse
 import csv
 import json
@@ -339,6 +339,14 @@ def write_alerts(alert_data, project_name, output_type=None, report_dir='', call
         if "Sheet" in workbook.sheetnames:
             default_sheet = workbook["Sheet"]
             workbook.remove(default_sheet)
+
+        wsprops = ws.sheet_properties
+        wsprops.tabColor = "1072BA"
+        wsprops.filterMode = True
+        wsprops.pageSetUpPr = PageSetupProperties(fitToPage=True, autoPageBreaks=False)
+        wsprops.outlinePr.summaryBelow = False
+        wsprops.outlinePr.applyStyles = True
+        wsprops.pageSetUpPr.autoPageBreaks = True
 
         # Write the header row
         for col_num, col_data in enumerate(header_row):
