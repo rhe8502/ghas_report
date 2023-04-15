@@ -396,12 +396,33 @@ def write_alerts(alert_data, project_name, output_type=None, report_dir='', call
                 url = cell.value
                 if url:
                     hyperlink = Hyperlink(ref=cell.coordinate, location=url)
-                    worksheet._hyperlinks.append(hyperlink)  # Use _hyperlinks instead of hyperlinks
-                    cell.font = hyperlink_style  # Apply the custom hyperlink style
+                    worksheet._hyperlinks.append(hyperlink)
+                    cell.font = hyperlink_style
                     cell.alignment = hyperlink_alignment
-                    # cell.style = "Hyperlink"  # Apply the built-in "Hyperlink" style
-    
-        # Save the workbook
+
+        # Autosize column width
+        for col_num, col_data in enumerate(header_row, start=1):
+            max_length = 0
+            column_letter = openpyxl.utils.get_column_letter(col_num)
+
+            for row_num in range(1, len(alert_data['scan_alerts']) + 3):  # +3 to include header and one extra row for safety
+                cell_value = str(worksheet.cell(row=row_num, column=col_num).value)
+                cell_length = len(cell_value)
+                max_length = max(max_length, cell_length)
+
+            # Add some padding to the maximum length
+            max_length += 2
+
+            # Set the column width
+            worksheet.column_dimensions[column_letter].width = max_length
+
+        # Add extra padding for the header row to compensate for the filter dropdown icon
+        header_padding = 3  # Adjust this value as needed
+        for col_num, col_data in enumerate(header_row, start=1):
+            column_letter = openpyxl.utils.get_column_letter(col_num)
+            worksheet.column_dimensions[column_letter].width += header_padding
+
+        # Save workbook
         workbook.save(filepath)
         print(f"Wrote {call_func} for \"{project_name}\" to {filepath}")
     else:
