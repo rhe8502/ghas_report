@@ -282,7 +282,6 @@ def process_alerts_count(api_url, project_data):
     return {'raw_alerts': alert_count, 'scan_alerts': alert_count}
 
 def write_xlsx(header_row, alert_data, project_name, filepath, call_func):
-
     try:
         wb = openpyxl.load_workbook(filepath)
     except FileNotFoundError:
@@ -355,6 +354,28 @@ def write_xlsx(header_row, alert_data, project_name, filepath, call_func):
                 cell.font = hyperlink_style
                 cell.alignment = hyperlink_alignment
 
+    if call_func == 'alert_count':
+        # Calculate the total for each column in the first worksheet
+        first_ws = wb.worksheets[0]
+        last_row = first_ws.max_row
+
+        # Define cell formatting styles
+        bold_font = Font(bold=True)
+        border_style = Border(top=Side(style='medium'), bottom=Side(style='medium'))
+        first_ws.cell(row=last_row + 1, column=1, value="Total").font = bold_font
+
+        # Loop through the columns and calculate the total
+        for col_num in range(4, 12):  # Columns D-K (4-11)
+            column_letter = openpyxl.utils.get_column_letter(col_num)
+            column_total = sum(first_ws.cell(row=row_num, column=col_num).value for row_num in range(2, last_row + 1))
+            cell = first_ws[f"{column_letter}{last_row + 1}"]
+            cell.value = column_total
+        
+        for col_num in range (1, 12):
+            cell = first_ws.cell(row=last_row + 1, column=col_num)
+            cell.border = border_style
+            cell.font = bold_font
+
     # Autosize column width
     for col_num, col_data in enumerate(header_row, start=1):
         max_length = 0
@@ -364,9 +385,6 @@ def write_xlsx(header_row, alert_data, project_name, filepath, call_func):
             cell_value = str(ws.cell(row=row_num, column=col_num).value)
             cell_length = len(cell_value)
             max_length = max(max_length, cell_length)
-
-        # Add some padding to the maximum length
-        #max_length += 2
 
         # Set the column width
         ws.column_dimensions[column_letter].width = max_length
