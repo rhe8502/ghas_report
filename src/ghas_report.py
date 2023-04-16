@@ -576,7 +576,6 @@ def process_scan_alerts(api_url, project_data, call_func, output_type=None ,stat
                         # Add Code Scanning alert data to the list
                         if call_func == 'codescan':
                             alert_data.extend([
-                                # safe_get(alert, ['rule', 'security_severity_level'], ''),
                                 safe_get(alert, ['rule', 'security_severity_level']) or safe_get(alert, ['rule', 'severity'], ''),
                                 safe_get(alert, ['state'], ''),
                                 safe_get(alert, ['rule', 'id'], ''),
