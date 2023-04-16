@@ -35,6 +35,10 @@ Output file format arguments:
   -wX, --output-xlsx    write output to a Microsoft Excel file
   -wJ, --output-json    write output to a JSON file
 
+Optional file format arguments:
+  -t <theme>, --theme <theme>
+                        specify the color theme for "xlsx" file output. Valid keywords are "grey", "blue", "green", "rose", "purple", "aqua", "orange". If none is specified, defaults to "grey".
+
 Optional alert report arguments:
   -n, --owner           specify the owner of a GitHub repository, or organization. required if the "--repo" or "--org" options are specified.
   -g, --org             specify the name of a GitHub organization. This option is mutually exclusive with the "--repo" option. The "--owner" option is required if this option is specified.
@@ -286,9 +290,9 @@ def process_alerts_count(api_url, project_data):
 
     return {'raw_alerts': alert_count, 'scan_alerts': alert_count}
 
-def get_theme(theme_name):
+def get_theme(output_theme):
     # Grey light theme
-    if theme_name == 'grey':
+    if output_theme == 'grey':
         header_fill = PatternFill(start_color="232323", end_color="232323", fill_type="solid")
         header_font = Font(bold=True, color="FFFFFF", size=11)
         odd_row_fill = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")
@@ -305,8 +309,8 @@ def get_theme(theme_name):
         hyperlink_style = Font(color="1C1C1C", size=11, underline="single")
         hyperlink_alignment = Alignment(vertical="center", wrap_text=False)
 
-    # BLue light theme
-    elif theme_name == 'blue':
+    # Blue light theme
+    elif output_theme == 'blue':
         header_fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
         header_font = Font(bold=True, color="FFFFFF", size=11)
         odd_row_fill = PatternFill(start_color="DCE6F1", end_color="DCE6F1", fill_type="solid")
@@ -324,7 +328,7 @@ def get_theme(theme_name):
         hyperlink_alignment = Alignment(vertical="center", wrap_text=False)
 
     # Rose light theme
-    elif theme_name == 'rose':
+    elif output_theme == 'rose':
         header_fill = PatternFill(start_color="C0504D", end_color="C0504D", fill_type="solid")
         header_font = Font(bold=True, color="FFFFFF", size=11)
         odd_row_fill = PatternFill(start_color="F2DCDB", end_color="F2DCDB", fill_type="solid")
@@ -342,7 +346,7 @@ def get_theme(theme_name):
         hyperlink_alignment = Alignment(vertical="center", wrap_text=False)
 
     # Green light theme
-    elif theme_name == 'green':
+    elif output_theme == 'green':
         header_fill = PatternFill(start_color="9BBB59", end_color="9BBB59", fill_type="solid")
         header_font = Font(bold=True, color="FFFFFF", size=11)
         odd_row_fill = PatternFill(start_color="EBF1DE", end_color="EBF1DE", fill_type="solid")
@@ -360,7 +364,7 @@ def get_theme(theme_name):
         hyperlink_alignment = Alignment(vertical="center", wrap_text=False)
 
     # Purple light theme
-    elif theme_name == 'purple':
+    elif output_theme == 'purple':
         header_fill = PatternFill(start_color="8064A2", end_color="8064A2", fill_type="solid")
         header_font = Font(bold=True, color="FFFFFF", size=11)
         odd_row_fill = PatternFill(start_color="E4DFEC", end_color="E4DFEC", fill_type="solid")
@@ -378,7 +382,7 @@ def get_theme(theme_name):
         hyperlink_alignment = Alignment(vertical="center", wrap_text=False)
 
     # Aqua light theme
-    elif theme_name == 'aqua':
+    elif output_theme == 'aqua':
         header_fill = PatternFill(start_color="4BACC6", end_color="4BACC6", fill_type="solid")
         header_font = Font(bold=True, color="FFFFFF", size=11)
         odd_row_fill = PatternFill(start_color="DAEEF3", end_color="DAEEF3", fill_type="solid")
@@ -396,7 +400,7 @@ def get_theme(theme_name):
         hyperlink_alignment = Alignment(vertical="center", wrap_text=False)
 
     # Orange light theme
-    elif theme_name == 'orange':
+    elif output_theme == 'orange':
         header_fill = PatternFill(start_color="F79646", end_color="F79646", fill_type="solid")
         header_font = Font(bold=True, color="FFFFFF", size=11)
         odd_row_fill = PatternFill(start_color="FDE9D9", end_color="FDE9D9", fill_type="solid")
@@ -426,11 +430,9 @@ def get_theme(theme_name):
         'hyperlink_alignment': hyperlink_alignment
     }
 
-    # Add more themes here if needed
-
     return theme
 
-def write_xlsx(header_row, alert_data, project_name, filepath, call_func):
+def write_xlsx(header_row, alert_data, project_name, filepath, call_func, output_theme=None):
     """Writes alert data to an XLSX file.
 
     This function writes the given alert data to an XLSX file. 
@@ -443,7 +445,7 @@ def write_xlsx(header_row, alert_data, project_name, filepath, call_func):
     call_func (str): The function calling write_xlsx, used to set the sheet name and select appropriate headers for the output file.
     """
     # Call the get_theme function and store the returned theme dictionary
-    theme = get_theme('orange')
+    theme = get_theme(output_theme)
 
     # Replace the theme-related variables with values from the theme dictionary
     header_fill = theme['header_fill']
@@ -572,7 +574,7 @@ def write_xlsx(header_row, alert_data, project_name, filepath, call_func):
     wb.save(filepath)
     print(f"Wrote {call_func} for \"{project_name}\" to {filepath}")
 
-def write_alerts(alert_data, project_name, output_type=None, report_dir='', call_func=None, time_stamp=None):
+def write_alerts(alert_data, project_name, output_type=None, output_theme=None, report_dir='', call_func=None, time_stamp=None):
     """Writes the processed scan alert data to a file in the specified format (CSV, XLSX, or JSON).
 
     Description:
@@ -590,9 +592,6 @@ def write_alerts(alert_data, project_name, output_type=None, report_dir='', call
     Raises:
         SystemExit: If there's an error writing to the file.
     """
-    # Set output type to CSV is none defined
-    output_type = 'csv' if output_type is None else output_type
-
     # Set scan type to GHAS-Report if xlsx is defined, otherwise set it to the call_func
     scan_type = 'GHAS_Report' if output_type == 'xlsx' else call_func
 
@@ -614,11 +613,11 @@ def write_alerts(alert_data, project_name, output_type=None, report_dir='', call
 
     # Set the header row
     header_row = scan_options.get(call_func, [])
-
+    
+    # Write the alert data to a file in the specified format, if none is specified, default to CSV
     if output_type == 'xlsx':
-        write_xlsx(header_row, alert_data, project_name, filepath, call_func)
+        write_xlsx(header_row, alert_data, project_name, filepath, call_func, output_theme)
     else:
-        # Write the alert data to a file in the specified format
         try:
             with open(filepath, 'w', encoding='utf-8', newline='') as f:
                 writer = csv.writer(f) if output_type == 'csv' else None
@@ -876,6 +875,10 @@ def setup_argparse():
     output_group.add_argument('-wC', '--output-csv', action='store_true', help='write output to a CSV file (default format)')
     output_group.add_argument('-wX', '--output-xlsx', action='store_true', help='write output to a Microsoft Excel file')
     output_group.add_argument('-wJ', '--output-json', action='store_true', help='write output to a JSON file')
+     
+    # Optional file format arguments
+    output_format_group = parser.add_argument_group('Optional file format arguments')
+    output_format_group.add_argument('-t', '--theme', metavar='<theme>', type=str, choices=['grey', 'blue', 'rose', 'green', 'purple', 'aqua', 'orange'], default='grey', help='specify the color theme for "xlsx" file output. Valid keywords are "grey", "blue", "green", "rose", "purple", "aqua", "orange". If none is specified, defaults to "grey".')
 
     # Optional alert reports arguments
     alert_options_group = parser.add_argument_group('Optional alert report arguments')
@@ -951,6 +954,9 @@ def process_args(parser):
     
     # Define the list of output types to process. If the -wA flag is present, include all output types. Otherwise, include only the output types that were passed as arguments, if no output types are specified, default to CSV
     output_types = ['csv', 'xlsx', 'json'] if args.output_all else [output_type for output_type in ['csv', 'xlsx', 'json'] if getattr(args, f'output_{output_type}')] or ['csv']
+    
+    # Get the theme color from the --theme flag, or default to 'grey'
+    output_theme = args.theme
 
     # Set state to 'open' if the -o ,or --open flag is present
     alert_state = 'open' if args.open else ''
@@ -971,15 +977,15 @@ def process_args(parser):
         else config.get('projects', {})
     )
 
-    # Three nested for loops to iterate through the projects, alert types, and output types
+    # Iterate through projects, alert types, and output types
     for project_name, project_data in projects.items():
         for alert_type in alert_types:
             for output_type in output_types:
                 {
-                    'alerts': lambda: write_alerts(process_alerts_count(api_url, project_data), project_name, output_type, report_dir, call_func='alert_count', time_stamp=time_stamp),
-                    'codescan': lambda output_type=output_type: write_alerts(process_scan_alerts(api_url, project_data, 'codescan', output_type, alert_state), project_name, output_type, report_dir, call_func='code_scan', time_stamp=time_stamp),
-                    'secretscan': lambda output_type=output_type: write_alerts(process_scan_alerts(api_url, project_data, 'secretscan', output_type, alert_state), project_name, output_type, report_dir, call_func='secret_scan', time_stamp=time_stamp),
-                    'dependabot': lambda output_type=output_type: write_alerts(process_scan_alerts(api_url, project_data, 'dependabot', output_type, alert_state), project_name, output_type, report_dir, call_func='dependabot_scan', time_stamp=time_stamp),
+                    'alerts': lambda: write_alerts(process_alerts_count(api_url, project_data), project_name, output_type, output_theme, report_dir, call_func='alert_count', time_stamp=time_stamp),
+                    'codescan': lambda output_type=output_type: write_alerts(process_scan_alerts(api_url, project_data, 'codescan', output_type, alert_state), project_name, output_type, output_theme, report_dir, call_func='code_scan', time_stamp=time_stamp),
+                    'secretscan': lambda output_type=output_type: write_alerts(process_scan_alerts(api_url, project_data, 'secretscan', output_type, alert_state), project_name, output_type, output_theme, report_dir, call_func='secret_scan', time_stamp=time_stamp),
+                    'dependabot': lambda output_type=output_type: write_alerts(process_scan_alerts(api_url, project_data, 'dependabot', output_type, alert_state), project_name, output_type, output_theme, report_dir, call_func='dependabot_scan', time_stamp=time_stamp),
                 }[alert_type]()
 
 def execution_time(start_time):
