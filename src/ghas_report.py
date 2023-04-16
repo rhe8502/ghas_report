@@ -6,9 +6,10 @@
 This script retrieves various types of GitHub Advanced Security (GHAS) alerts for a specified
 organization or repository. The types of alerts include Code scanning alerts, Secret scanning
 alerts, and Dependabot alerts. The script generates reports based on the specified options and
-writes the results to a file in CSV, XLSX, JSON, or all formats.
+writes the results to a file in CSV, XLSX, JSON, or all formats at once.
 
 The script uses the GitHub API to retrieve alert data and requires valid API credentials. 
+
 An API key can be specified added using the "ghas_enc_key.py" script, or alternatively
 specified in the GH_API_KEY environment variable.
 
@@ -51,16 +52,18 @@ Optional location arguments:
 
 Requirements:
     - Python 3.6 or later
-    - requests
-    - cryptography
-    - openpyxl
+
+This script uses the following third-party libraries:
+    - requests      (https://requests.readthedocs.io/en/master/)
+    - cryptography  (https://cryptography.io/en/latest/)
+    - openpyxl      (https://openpyxl.readthedocs.io/en/stable/)
 
 Dependencies:
     - ghas_enc_key.py
 
 Package: ghas_report.py
-Version: 1.2.0-dev
-Date: XXXX-XX-XX
+Version: 1.2.0
+Date: 2023-04-17
 
 Author: Rupert Herbst <rhe8502(at)pm.me>
 Project URL: https://github.com/rhe8502/ghas_report
@@ -748,8 +751,8 @@ def setup_argparse():
         argparse.ArgumentParser: The configured ArgumentParser object.
     """
     # Version number, release date, URL, license, and author
-    version_number = '1.2.0-dev'
-    release_date = 'XXXX-XX-XX'
+    version_number = '1.2.0'
+    release_date = '2023-04-17'
     license = 'Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0)'
     url = 'https://github.com/rhe8502/ghas_report'
     author = "Rupert Herbst <rhe8502(at)pm.me>"
