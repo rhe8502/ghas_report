@@ -286,6 +286,150 @@ def process_alerts_count(api_url, project_data):
 
     return {'raw_alerts': alert_count, 'scan_alerts': alert_count}
 
+def get_theme(theme_name):
+    # Grey light theme
+    if theme_name == 'grey':
+        header_fill = PatternFill(start_color="232323", end_color="232323", fill_type="solid")
+        header_font = Font(bold=True, color="FFFFFF", size=11)
+        odd_row_fill = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")
+        even_row_fill = PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid")
+        data_font = Font(size=11)
+        border_color = "BFBFBF"
+        thin_border = Border(
+            left=Side(style='thin', color=border_color),
+            right=Side(style='thin', color=border_color),
+            top=Side(style='thin', color=border_color),
+            bottom=Side(style='thin', color=border_color)
+        )
+        cell_alignment = Alignment(vertical="center", wrap_text=False)
+        hyperlink_style = Font(color="1C1C1C", size=11, underline="single")
+        hyperlink_alignment = Alignment(vertical="center", wrap_text=False)
+
+    # BLue light theme
+    elif theme_name == 'blue':
+        header_fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
+        header_font = Font(bold=True, color="FFFFFF", size=11)
+        odd_row_fill = PatternFill(start_color="DCE6F1", end_color="DCE6F1", fill_type="solid")
+        even_row_fill = PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid")
+        data_font = Font(size=11)
+        border_color = "95B3D7"
+        thin_border = Border(
+            left=Side(style='thin', color=border_color),
+            right=Side(style='thin', color=border_color),
+            top=Side(style='thin', color=border_color),
+            bottom=Side(style='thin', color=border_color)
+        )
+        cell_alignment = Alignment(vertical="center", wrap_text=False)
+        hyperlink_style = Font(color="0000EE", size=11, underline="single")
+        hyperlink_alignment = Alignment(vertical="center", wrap_text=False)
+
+    # Rose light theme
+    elif theme_name == 'rose':
+        header_fill = PatternFill(start_color="C0504D", end_color="C0504D", fill_type="solid")
+        header_font = Font(bold=True, color="FFFFFF", size=11)
+        odd_row_fill = PatternFill(start_color="F2DCDB", end_color="F2DCDB", fill_type="solid")
+        even_row_fill = PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid")
+        data_font = Font(size=11)
+        border_color = "DA9694"
+        thin_border = Border(
+            left=Side(style='thin', color=border_color),
+            right=Side(style='thin', color=border_color),
+            top=Side(style='thin', color=border_color),
+            bottom=Side(style='thin', color=border_color)
+        )
+        cell_alignment = Alignment(vertical="center", wrap_text=False)
+        hyperlink_style = Font(color="0000EE", size=11, underline="single")
+        hyperlink_alignment = Alignment(vertical="center", wrap_text=False)
+
+    # Green light theme
+    elif theme_name == 'green':
+        header_fill = PatternFill(start_color="9BBB59", end_color="9BBB59", fill_type="solid")
+        header_font = Font(bold=True, color="FFFFFF", size=11)
+        odd_row_fill = PatternFill(start_color="EBF1DE", end_color="EBF1DE", fill_type="solid")
+        even_row_fill = PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid")
+        data_font = Font(size=11)
+        border_color = "C4D79B"
+        thin_border = Border(
+            left=Side(style='thin', color=border_color),
+            right=Side(style='thin', color=border_color),
+            top=Side(style='thin', color=border_color),
+            bottom=Side(style='thin', color=border_color)
+        )
+        cell_alignment = Alignment(vertical="center", wrap_text=False)
+        hyperlink_style = Font(color="0000EE", size=11, underline="single")
+        hyperlink_alignment = Alignment(vertical="center", wrap_text=False)
+
+    # Purple light theme
+    elif theme_name == 'purple':
+        header_fill = PatternFill(start_color="8064A2", end_color="8064A2", fill_type="solid")
+        header_font = Font(bold=True, color="FFFFFF", size=11)
+        odd_row_fill = PatternFill(start_color="E4DFEC", end_color="E4DFEC", fill_type="solid")
+        even_row_fill = PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid")
+        data_font = Font(size=11)
+        border_color = "B1A0C7"
+        thin_border = Border(
+            left=Side(style='thin', color=border_color),
+            right=Side(style='thin', color=border_color),
+            top=Side(style='thin', color=border_color),
+            bottom=Side(style='thin', color=border_color)
+        )
+        cell_alignment = Alignment(vertical="center", wrap_text=False)
+        hyperlink_style = Font(color="0000EE", size=11, underline="single")
+        hyperlink_alignment = Alignment(vertical="center", wrap_text=False)
+
+    # Aqua light theme
+    elif theme_name == 'aqua':
+        header_fill = PatternFill(start_color="4BACC6", end_color="4BACC6", fill_type="solid")
+        header_font = Font(bold=True, color="FFFFFF", size=11)
+        odd_row_fill = PatternFill(start_color="DAEEF3", end_color="DAEEF3", fill_type="solid")
+        even_row_fill = PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid")
+        data_font = Font(size=11)
+        border_color = "92CDDC"
+        thin_border = Border(
+            left=Side(style='thin', color=border_color),
+            right=Side(style='thin', color=border_color),
+            top=Side(style='thin', color=border_color),
+            bottom=Side(style='thin', color=border_color)
+        )
+        cell_alignment = Alignment(vertical="center", wrap_text=False)
+        hyperlink_style = Font(color="0000EE", size=11, underline="single")
+        hyperlink_alignment = Alignment(vertical="center", wrap_text=False)
+
+    # Orange light theme
+    elif theme_name == 'orange':
+        header_fill = PatternFill(start_color="F79646", end_color="F79646", fill_type="solid")
+        header_font = Font(bold=True, color="FFFFFF", size=11)
+        odd_row_fill = PatternFill(start_color="FDE9D9", end_color="FDE9D9", fill_type="solid")
+        even_row_fill = PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid")
+        data_font = Font(size=11)
+        border_color = "FABF8F"
+        thin_border = Border(
+            left=Side(style='thin', color=border_color),
+            right=Side(style='thin', color=border_color),
+            top=Side(style='thin', color=border_color),
+            bottom=Side(style='thin', color=border_color)
+        )
+        cell_alignment = Alignment(vertical="center", wrap_text=False)
+        hyperlink_style = Font(color="0000EE", size=11, underline="single")
+        hyperlink_alignment = Alignment(vertical="center", wrap_text=False)
+
+    theme = {
+        'header_fill': header_fill,
+        'header_font': header_font,
+        'odd_row_fill': odd_row_fill,
+        'even_row_fill': even_row_fill,
+        'data_font': data_font,
+        'border_color': border_color,
+        'thin_border': thin_border,
+        'cell_alignment': cell_alignment,
+        'hyperlink_style': hyperlink_style,
+        'hyperlink_alignment': hyperlink_alignment
+    }
+
+    # Add more themes here if needed
+
+    return theme
+
 def write_xlsx(header_row, alert_data, project_name, filepath, call_func):
     """Writes alert data to an XLSX file.
 
@@ -298,54 +442,26 @@ def write_xlsx(header_row, alert_data, project_name, filepath, call_func):
     filepath (str): The full file path where the XLSX file will be saved.
     call_func (str): The function calling write_xlsx, used to set the sheet name and select appropriate headers for the output file.
     """
+    # Call the get_theme function and store the returned theme dictionary
+    theme = get_theme('orange')
+
+    # Replace the theme-related variables with values from the theme dictionary
+    header_fill = theme['header_fill']
+    header_font = theme['header_font']
+    odd_row_fill = theme['odd_row_fill']
+    even_row_fill = theme['even_row_fill']
+    data_font = theme['data_font']
+    border_color = theme['border_color']
+    thin_border = theme['thin_border']
+    cell_alignment = theme['cell_alignment']
+    hyperlink_style = theme['hyperlink_style']
+    hyperlink_alignment = theme['hyperlink_alignment']
+
     try:
         wb = openpyxl.load_workbook(filepath)
     except FileNotFoundError:
         wb = openpyxl.Workbook()
     
-    # Modern grey color scheme
-    header_fill = PatternFill(start_color="3D3D3D", end_color="3D3D3D", fill_type="solid")
-    header_font = Font(bold=True, color="FFFFFF", size=11)
-    odd_row_fill = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")
-    even_row_fill = PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid")
-    data_font = Font(size=11)
-    border_color = "BFBFBF"  # Custom border color (grey)
-    thin_border = Border(
-        left=Side(style='thin', color=border_color),
-        right=Side(style='thin', color=border_color),
-        top=Side(style='thin', color=border_color),
-        bottom=Side(style='thin', color=border_color)
-    )
-
-    cell_alignment = Alignment(vertical="center", wrap_text=False)
-
-    # Create custom hyperlink style
-    hyperlink_style = Font(color="1C1C1C", size=11, underline="single")
-    hyperlink_alignment = Alignment(vertical="center", wrap_text=False)
-
-    # Modern blue color scheme - uncomment to use - comment out Modern grey color scheme above
-    '''
-    # Define cell formatting styles
-    header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
-    header_font = Font(bold=True, color="FFFFFF", size=11)
-    odd_row_fill = PatternFill(start_color="D9E1F2", end_color="D9E1F2", fill_type="solid")
-    even_row_fill = PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid")
-    data_font = Font(size=11)
-    border_color = "D9E1F2"  # Custom border color (blue)
-    thin_border = Border(
-        left=Side(style='thin', color=border_color),
-        right=Side(style='thin', color=border_color),
-        top=Side(style='thin', color=border_color),
-        bottom=Side(style='thin', color=border_color)
-    )
-
-    cell_alignment = Alignment(vertical="center", wrap_text=False)
-
-    # Create custom hyperlink style
-    hyperlink_style = Font(color="0000EE", size=11, underline="single")
-    hyperlink_alignment = Alignment(vertical="center", wrap_text=False)
-    '''
-
     # Add a new worksheet with the name of the function calling write_xlsx
     ws = wb.create_sheet(call_func)
 
@@ -370,7 +486,7 @@ def write_xlsx(header_row, alert_data, project_name, filepath, call_func):
         for col_num, col_data in enumerate(row_data):
             cell = ws.cell(row=row_num, column=col_num + 1, value=col_data)
 
-               # Check if the cell value is zero, then set the data type to 'n' (number)
+            # Check if the cell value is zero, then set the data type to 'n' (number)
             if col_data == '0':
                 cell.data_type = 'n'
     
@@ -379,11 +495,9 @@ def write_xlsx(header_row, alert_data, project_name, filepath, call_func):
             cell.border = thin_border
             cell.alignment = cell_alignment
 
-    '''
     # Set this flag to True if the current sheet contains URLs
     contains_urls = True  # Change this value based on your sheet's content
 
-    
     if call_func != 'alert_count' and contains_urls:
         # Assuming the last column contains URLs, loop through the rows and add hyperlinks
         url_column = len(header_row)  # Change this value if the URL column is not the last one
@@ -391,11 +505,13 @@ def write_xlsx(header_row, alert_data, project_name, filepath, call_func):
             cell = ws.cell(row=row_num, column=url_column)
             url = cell.value
             if url:
-                hyperlink = Hyperlink(ref=cell.coordinate, location=url)
-                ws._hyperlinks.append(hyperlink)
-                cell.font = hyperlink_style
-                cell.alignment = hyperlink_alignment
-    '''
+                try:
+                    # Add the friendly name as the URL itself
+                    cell.value = f'=HYPERLINK("{url}", "{url}")'
+                    cell.font = hyperlink_style
+                    cell.alignment = hyperlink_alignment
+                except Exception as e:
+                        print(f"Error while processing hyperlink at row {row_num}: {e}")
 
     if call_func == 'alert_count':
         # Calculate the total for each column in the first worksheet
@@ -404,7 +520,8 @@ def write_xlsx(header_row, alert_data, project_name, filepath, call_func):
 
         # Define cell formatting styles
         bold_font = Font(bold=True)
-        border_style = Border(top=Side(style='medium'), bottom=Side(style='medium'))
+        border_style = Border(top=Side(style='medium',color=border_color), bottom=Side(style='medium', color=border_color))
+        white_fill = PatternFill(start_color='FFFFFF', end_color='FFFFFF', fill_type='solid')
         first_ws.cell(row=last_row + 1, column=1, value="Total").font = bold_font
 
         # Loop through the columns and calculate the total
@@ -418,7 +535,14 @@ def write_xlsx(header_row, alert_data, project_name, filepath, call_func):
             cell = first_ws.cell(row=last_row + 1, column=col_num)
             cell.border = border_style
             cell.font = bold_font
+            cell.fill = white_fill
 
+    # Set the maximum cell length - default is 60
+    max_cell_length = 60 
+    
+    #Adjust padding for column width, if needed - default is 0
+    padding = 0
+    
     # Autosize column width
     for col_num, col_data in enumerate(header_row, start=1):
         max_length = 0
@@ -429,8 +553,11 @@ def write_xlsx(header_row, alert_data, project_name, filepath, call_func):
             cell_length = len(cell_value)
             max_length = max(max_length, cell_length)
 
+        # Limit the maximum column width to the specified maximum cell length
+        max_length = min(max_length, max_cell_length)
+
         # Set the column width
-        ws.column_dimensions[column_letter].width = max_length
+        ws.column_dimensions[column_letter].width = max_length + padding
 
     # Add extra padding for the header row to compensate for the filter dropdown icon
     header_padding = 5  # Adjust this value as needed
