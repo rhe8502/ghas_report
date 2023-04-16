@@ -30,14 +30,14 @@ Optional alert state arguments:
   -o, --open            generate report(s) for open alerts only - note: this setting has no effect on the alert count report "--alerts", which only includes open alerts
 
 Output file format arguments:
-  -wA, --output-all     write output to all formats at once
-  -wC, --output-csv     write output to a CSV file (default format)
-  -wX, --output-xlsx    write output to a Microsoft Excel file
-  -wJ, --output-json    write output to a JSON file
+  -wA, --write-all      write output to all formats at once
+  -wC, --csv            write output to a CSV file (default format)
+  -wX, --xlsx           write output to a Microsoft Excel file
+  -wJ, --json           write output to a JSON file
 
 Optional file format arguments:
   -t <theme>, --theme <theme>
-                        specify the color theme for "xlsx" file output. Valid keywords are "grey", "blue", "green", "rose", "purple", "aqua", "orange". If none is specified, defaults to "grey".
+                        specify the color theme for "xlsx" file output. Valid keywords are "grey", "blue", "green", "rose", "purple", "aqua", "orange". If none is specified, defaults to "grey"
 
 Optional alert report arguments:
   -n, --owner           specify the owner of a GitHub repository, or organization. required if the "--repo" or "--org" options are specified.
@@ -291,143 +291,44 @@ def process_alerts_count(api_url, project_data):
     return {'raw_alerts': alert_count, 'scan_alerts': alert_count}
 
 def get_theme(output_theme):
-    # Grey light theme
-    if output_theme == 'grey':
-        header_fill = PatternFill(start_color="232323", end_color="232323", fill_type="solid")
-        header_font = Font(bold=True, color="FFFFFF", size=11)
-        odd_row_fill = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")
-        even_row_fill = PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid")
-        data_font = Font(size=11)
-        border_color = "BFBFBF"
-        thin_border = Border(
-            left=Side(style='thin', color=border_color),
-            right=Side(style='thin', color=border_color),
-            top=Side(style='thin', color=border_color),
-            bottom=Side(style='thin', color=border_color)
-        )
-        cell_alignment = Alignment(vertical="center", wrap_text=False)
-        hyperlink_style = Font(color="1C1C1C", size=11, underline="single")
-        hyperlink_alignment = Alignment(vertical="center", wrap_text=False)
+    """Return a dictionary of formatting settings based on the specified output theme.
 
-    # Blue light theme
-    elif output_theme == 'blue':
-        header_fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
-        header_font = Font(bold=True, color="FFFFFF", size=11)
-        odd_row_fill = PatternFill(start_color="DCE6F1", end_color="DCE6F1", fill_type="solid")
-        even_row_fill = PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid")
-        data_font = Font(size=11)
-        border_color = "95B3D7"
-        thin_border = Border(
-            left=Side(style='thin', color=border_color),
-            right=Side(style='thin', color=border_color),
-            top=Side(style='thin', color=border_color),
-            bottom=Side(style='thin', color=border_color)
-        )
-        cell_alignment = Alignment(vertical="center", wrap_text=False)
-        hyperlink_style = Font(color="0000EE", size=11, underline="single")
-        hyperlink_alignment = Alignment(vertical="center", wrap_text=False)
+    Args:
+        output_theme (str): The name of the desired output theme. Available options are 'grey', 'blue', 'rose', 'green',
+                            'purple', 'aqua', and 'orange'. If no option is provided, the default 'grey'
+                            theme will be used.
 
-    # Rose light theme
-    elif output_theme == 'rose':
-        header_fill = PatternFill(start_color="C0504D", end_color="C0504D", fill_type="solid")
-        header_font = Font(bold=True, color="FFFFFF", size=11)
-        odd_row_fill = PatternFill(start_color="F2DCDB", end_color="F2DCDB", fill_type="solid")
-        even_row_fill = PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid")
-        data_font = Font(size=11)
-        border_color = "DA9694"
-        thin_border = Border(
-            left=Side(style='thin', color=border_color),
-            right=Side(style='thin', color=border_color),
-            top=Side(style='thin', color=border_color),
-            bottom=Side(style='thin', color=border_color)
-        )
-        cell_alignment = Alignment(vertical="center", wrap_text=False)
-        hyperlink_style = Font(color="0000EE", size=11, underline="single")
-        hyperlink_alignment = Alignment(vertical="center", wrap_text=False)
+    Returns:
+        dict: A dictionary of formatting settings including header and row fill colors, font styles, border styles,
+              and cell alignment settings. The specific settings are determined by the specified output theme.
+    """
+    theme_settings = {
+        'grey': {'header_fill_color': '232323', 'odd_row_fill_color': 'F2F2F2', 'border_color': 'BFBFBF'},
+        'blue': {'header_fill_color': '4F81BD', 'odd_row_fill_color': 'DCE6F1', 'border_color': '95B3D7'},
+        'rose': {'header_fill_color': 'C0504D', 'odd_row_fill_color': 'F2DCDB', 'border_color': 'DA9694'},
+        'green': {'header_fill_color': '9BBB59', 'odd_row_fill_color': 'EBF1DE', 'border_color': 'C4D79B'},
+        'purple': {'header_fill_color': '8064A2', 'odd_row_fill_color': 'E4DFEC', 'border_color': 'B1A0C7'},
+        'aqua': {'header_fill_color': '4BACC6', 'odd_row_fill_color': 'DAEEF3', 'border_color': '92CDDC'},
+        'orange': {'header_fill_color': 'F79646', 'odd_row_fill_color': 'FDE9D9', 'border_color': 'FABF8F'}
+    }
 
-    # Green light theme
-    elif output_theme == 'green':
-        header_fill = PatternFill(start_color="9BBB59", end_color="9BBB59", fill_type="solid")
-        header_font = Font(bold=True, color="FFFFFF", size=11)
-        odd_row_fill = PatternFill(start_color="EBF1DE", end_color="EBF1DE", fill_type="solid")
-        even_row_fill = PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid")
-        data_font = Font(size=11)
-        border_color = "C4D79B"
-        thin_border = Border(
-            left=Side(style='thin', color=border_color),
-            right=Side(style='thin', color=border_color),
-            top=Side(style='thin', color=border_color),
-            bottom=Side(style='thin', color=border_color)
-        )
-        cell_alignment = Alignment(vertical="center", wrap_text=False)
-        hyperlink_style = Font(color="0000EE", size=11, underline="single")
-        hyperlink_alignment = Alignment(vertical="center", wrap_text=False)
-
-    # Purple light theme
-    elif output_theme == 'purple':
-        header_fill = PatternFill(start_color="8064A2", end_color="8064A2", fill_type="solid")
-        header_font = Font(bold=True, color="FFFFFF", size=11)
-        odd_row_fill = PatternFill(start_color="E4DFEC", end_color="E4DFEC", fill_type="solid")
-        even_row_fill = PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid")
-        data_font = Font(size=11)
-        border_color = "B1A0C7"
-        thin_border = Border(
-            left=Side(style='thin', color=border_color),
-            right=Side(style='thin', color=border_color),
-            top=Side(style='thin', color=border_color),
-            bottom=Side(style='thin', color=border_color)
-        )
-        cell_alignment = Alignment(vertical="center", wrap_text=False)
-        hyperlink_style = Font(color="0000EE", size=11, underline="single")
-        hyperlink_alignment = Alignment(vertical="center", wrap_text=False)
-
-    # Aqua light theme
-    elif output_theme == 'aqua':
-        header_fill = PatternFill(start_color="4BACC6", end_color="4BACC6", fill_type="solid")
-        header_font = Font(bold=True, color="FFFFFF", size=11)
-        odd_row_fill = PatternFill(start_color="DAEEF3", end_color="DAEEF3", fill_type="solid")
-        even_row_fill = PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid")
-        data_font = Font(size=11)
-        border_color = "92CDDC"
-        thin_border = Border(
-            left=Side(style='thin', color=border_color),
-            right=Side(style='thin', color=border_color),
-            top=Side(style='thin', color=border_color),
-            bottom=Side(style='thin', color=border_color)
-        )
-        cell_alignment = Alignment(vertical="center", wrap_text=False)
-        hyperlink_style = Font(color="0000EE", size=11, underline="single")
-        hyperlink_alignment = Alignment(vertical="center", wrap_text=False)
-
-    # Orange light theme
-    elif output_theme == 'orange':
-        header_fill = PatternFill(start_color="F79646", end_color="F79646", fill_type="solid")
-        header_font = Font(bold=True, color="FFFFFF", size=11)
-        odd_row_fill = PatternFill(start_color="FDE9D9", end_color="FDE9D9", fill_type="solid")
-        even_row_fill = PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid")
-        data_font = Font(size=11)
-        border_color = "FABF8F"
-        thin_border = Border(
-            left=Side(style='thin', color=border_color),
-            right=Side(style='thin', color=border_color),
-            top=Side(style='thin', color=border_color),
-            bottom=Side(style='thin', color=border_color)
-        )
-        cell_alignment = Alignment(vertical="center", wrap_text=False)
-        hyperlink_style = Font(color="0000EE", size=11, underline="single")
-        hyperlink_alignment = Alignment(vertical="center", wrap_text=False)
+    settings = theme_settings.get(output_theme, theme_settings['grey'])
 
     theme = {
-        'header_fill': header_fill,
-        'header_font': header_font,
-        'odd_row_fill': odd_row_fill,
-        'even_row_fill': even_row_fill,
-        'data_font': data_font,
-        'border_color': border_color,
-        'thin_border': thin_border,
-        'cell_alignment': cell_alignment,
-        'hyperlink_style': hyperlink_style,
-        'hyperlink_alignment': hyperlink_alignment
+        'header_fill': PatternFill(start_color=settings['header_fill_color'], end_color=settings['header_fill_color'], fill_type="solid"),
+        'header_font': Font(bold=True, color="FFFFFF", size=11),
+        'odd_row_fill': PatternFill(start_color=settings['odd_row_fill_color'], end_color=settings['odd_row_fill_color'], fill_type="solid"),
+        'even_row_fill': PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid"),
+        'data_font': Font(size=11),
+        'thin_border': Border(
+            left=Side(style='thin', color=settings['border_color']),
+            right=Side(style='thin', color=settings['border_color']),
+            top=Side(style='thin', color=settings['border_color']),
+            bottom=Side(style='thin', color=settings['border_color'])
+        ),
+        'cell_alignment': Alignment(vertical="center", wrap_text=False),
+        'hyperlink_style': Font(color="0000EE", size=11, underline="single"),
+        'hyperlink_alignment': Alignment(vertical="center", wrap_text=False)
     }
 
     return theme
@@ -435,14 +336,20 @@ def get_theme(output_theme):
 def write_xlsx(header_row, alert_data, project_name, filepath, call_func, output_theme=None):
     """Writes alert data to an XLSX file.
 
-    This function writes the given alert data to an XLSX file. 
+    This function takes the given header row, alert data, project name, file path, and the function name calling write_xlsx
+    and creates an XLSX file with the given information. The function calls the 'get_theme' function to fetch the color theme
+    of the output file. The output theme variable can be used to specify the color of the output file.
 
     Args:
-    header_row (list): A list of column header labels for the XLSX file.
-    alert_data (dict): A dictionary containing the alert data to be written to the XLSX file.
-    project_name (str): The name of the project for which the alert data is being written.
-    filepath (str): The full file path where the XLSX file will be saved.
-    call_func (str): The function calling write_xlsx, used to set the sheet name and select appropriate headers for the output file.
+        header_row (list): A list of column header labels for the XLSX file.
+        alert_data (dict): A dictionary containing the alert data to be written to the XLSX file.
+        project_name (str): The name of the project for which the alert data is being written.
+        filepath (str): The full file path where the XLSX file will be saved.
+        call_func (str): The function calling write_xlsx, used to set the sheet name and select appropriate headers for the output file.
+        output_theme (str, optional): The color theme of the output file. Default is None.
+
+    Returns:
+        None
     """
     # Call the get_theme function and store the returned theme dictionary
     theme = get_theme(output_theme)
@@ -453,7 +360,6 @@ def write_xlsx(header_row, alert_data, project_name, filepath, call_func, output
     odd_row_fill = theme['odd_row_fill']
     even_row_fill = theme['even_row_fill']
     data_font = theme['data_font']
-    border_color = theme['border_color']
     thin_border = theme['thin_border']
     cell_alignment = theme['cell_alignment']
     hyperlink_style = theme['hyperlink_style']
@@ -522,7 +428,8 @@ def write_xlsx(header_row, alert_data, project_name, filepath, call_func, output
 
         # Define cell formatting styles
         bold_font = Font(bold=True)
-        border_style = Border(top=Side(style='medium',color=border_color), bottom=Side(style='medium', color=border_color))
+        border_style = Border(top=Side(style='medium', color=theme['thin_border'].top.color),
+                     bottom=Side(style='medium', color=theme['thin_border'].bottom.color))
         white_fill = PatternFill(start_color='FFFFFF', end_color='FFFFFF', fill_type='solid')
         first_ws.cell(row=last_row + 1, column=1, value="Total").font = bold_font
 
@@ -871,10 +778,10 @@ def setup_argparse():
 
     # Output file format arguments
     output_group = parser.add_argument_group('Output file format arguments')
-    output_group.add_argument('-wA', '--output-all', action='store_true', help='write output to all formats at once')
-    output_group.add_argument('-wC', '--output-csv', action='store_true', help='write output to a CSV file (default format)')
-    output_group.add_argument('-wX', '--output-xlsx', action='store_true', help='write output to a Microsoft Excel file')
-    output_group.add_argument('-wJ', '--output-json', action='store_true', help='write output to a JSON file')
+    output_group.add_argument('-wA', '--write-all', action='store_true', help='write output to all formats at once')
+    output_group.add_argument('-wC', '--csv', action='store_true', help='write output to a CSV file (default format)')
+    output_group.add_argument('-wX', '--xlsx', action='store_true', help='write output to a Microsoft Excel file')
+    output_group.add_argument('-wJ', '--json', action='store_true', help='write output to a JSON file')
      
     # Optional file format arguments
     output_format_group = parser.add_argument_group('Optional file format arguments')
@@ -914,7 +821,7 @@ def check_args_errors(args, parser):
     elif not any([args.all, args.alerts, args.codescan, args.secretscan, args.dependabot]):
         parser.print_help()
         raise SystemExit('\nError: No alert type specified. Please specify at least one alert type --all, --alerts, --codescan, --secretscan, or --dependabot.\n')
-    elif args.output_all and (args.output_csv or args.output_json):
+    elif args.write_all and (args.csv or args.json):
         parser.print_help()
         raise SystemExit('\nError: --output-all cannot be used together with --output-csv or --output-json\n')
     elif args.repo and args.org:
@@ -953,7 +860,7 @@ def process_args(parser):
     alert_types = ['alerts', 'codescan', 'secretscan', 'dependabot'] if args.all else [alert_type for alert_type in ['alerts', 'codescan', 'secretscan', 'dependabot'] if getattr(args, alert_type)]
     
     # Define the list of output types to process. If the -wA flag is present, include all output types. Otherwise, include only the output types that were passed as arguments, if no output types are specified, default to CSV
-    output_types = ['csv', 'xlsx', 'json'] if args.output_all else [output_type for output_type in ['csv', 'xlsx', 'json'] if getattr(args, f'output_{output_type}')] or ['csv']
+    output_types = ['csv', 'xlsx', 'json'] if args.write_all else [output_type for output_type in ['csv', 'xlsx', 'json'] if getattr(args, output_type)] or ['csv']
     
     # Get the theme color from the --theme flag, or default to 'grey'
     output_theme = args.theme
