@@ -379,10 +379,12 @@ def write_xlsx(header_row, alert_data, project_name, filepath, call_func):
             cell.border = thin_border
             cell.alignment = cell_alignment
 
+    '''
     # Set this flag to True if the current sheet contains URLs
     contains_urls = True  # Change this value based on your sheet's content
 
-    if contains_urls:
+    
+    if call_func != 'alert_count' and contains_urls:
         # Assuming the last column contains URLs, loop through the rows and add hyperlinks
         url_column = len(header_row)  # Change this value if the URL column is not the last one
         for row_num in range(2, len(alert_data['scan_alerts']) + 2):
@@ -393,6 +395,7 @@ def write_xlsx(header_row, alert_data, project_name, filepath, call_func):
                 ws._hyperlinks.append(hyperlink)
                 cell.font = hyperlink_style
                 cell.alignment = hyperlink_alignment
+    '''
 
     if call_func == 'alert_count':
         # Calculate the total for each column in the first worksheet
