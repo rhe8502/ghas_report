@@ -82,6 +82,10 @@ This command generates all alert reports, including Alert Count, Code Scanning, 
 python3 ghas_report.py --all --xlsx --theme green
 ```
 
+<p align="center">
+  <img src="./assets/ghas_excel_green.gif" alt="GHAS Excel Report">
+</p>
+
 This command generates all alert reports, including Alert Count, Code Scanning, Secret Scanning, and Dependabot alert reports, in the Microsoft Excel (xlsx) format and applies a olive green table style.
 
 ### Example 3: Generate all open alerts report in JSON format
