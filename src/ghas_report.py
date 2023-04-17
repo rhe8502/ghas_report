@@ -6,56 +6,70 @@
 This script retrieves various types of GitHub Advanced Security (GHAS) alerts for a specified
 organization or repository. The types of alerts include Code scanning alerts, Secret scanning
 alerts, and Dependabot alerts. The script generates reports based on the specified options and
-writes the results to a file in CSV, JSON, or both formats.
+writes the results to a file in CSV, XLSX, JSON, or all formats at once.
 
 The script uses the GitHub API to retrieve alert data and requires valid API credentials. 
+
 An API key can be specified added using the "ghas_enc_key.py" script, or alternatively
 specified in the GH_API_KEY environment variable.
 
 Usage:
     python ghas_reporting_tool.py [options]
 
-Options:
-    -v, --version          Show program's version number and exit
-    
-    Alert reports:
-    -a, --all              Generate all alert reports
-    -l, --alerts           Generate Alert Count report of all open alerts
-    -c, --codescan         Generate Code Scan alert report
-    -s, --secretscan       Generate Secret Scanning alert report
-    -d, --dependabot       Generate Dependabot alert report
-    
-    Optional alert report arguments:
-    -o, --open             Generate report(s) for open alerts only
-    -n, --owner            Specify the owner of a GitHub repository, or organization
-    -r, --repo             Specify the name of a GitHub repository
-    -g, --org              Specify the name of a GitHub organization
-   
-    Output file format arguments:
-    -wA, --output-all      Write output to all formats at once
-    -wC, --output-csv      Write output to a CSV file (default format)
-    -wJ, --output-json     Write output to a JSON file
-    
-    Optional location arguments:
-    -lc, --config          Specify file location for the configuration file
-    -lk, --keyfile         Specify file location for the encryption key file
-    -lr, --reports         Specify file location for the reports directory
+options:
+  -h, --help            show this help message and exit
+  -v, --version         show program's version number and exit
+
+Generate alert reports:
+  -a, --all             generate Alert Count, Code Scanning, Secret Scanning, and Dependabot alert reports
+  -l, --alerts          generate Alert Count report of all open alerts
+  -c, --codescan        generate Code Scan alert report
+  -s, --secretscan      generate Secret Scanning alert report
+  -d, --dependabot      generate Dependabot alert report
+
+Optional alert state arguments:
+  -o, --open            generate report(s) for open alerts only - note: this setting has no effect on the alert count report "--alerts", which only includes open alerts
+
+Output file format arguments:
+  -wA, --write-all      write output to all formats at once
+  -wC, --csv            write output to a CSV file (default format)
+  -wX, --xlsx           write output to a Microsoft Excel file
+  -wJ, --json           write output to a JSON file
+
+Optional file format arguments:
+  -t <theme>, --theme <theme>
+                        specify the color theme for "xlsx" file output. Valid keywords are "grey", "blue", "green", "rose", "purple", "aqua", "orange". If none is specified, defaults to "grey"
+
+Optional alert report arguments:
+  -n, --owner           specify the owner of a GitHub repository, or organization. required if the "--repo" or "--org" options are specified.
+  -g, --org             specify the name of a GitHub organization. This option is mutually exclusive with the "--repo" option. The "--owner" option is required if this option is specified.
+  -r, --repo            specify the name of a GitHub repository. This option is mutually exclusive with the "--org" option. The "--owner" option is required if this option is specified.
+
+Optional location arguments:
+  -lc, --config         specify file location for the configuration file ("ghas_conf.json")
+  -lk, --keyfile        specify file location for the encryption key file (".ghas_env") - overrides the location specified in the configuration file
+  -lr, --reports        specify file location for the reports directory - overrides the location specified in the configuration file
 
 Requirements:
     - Python 3.6 or later
-    - requests
-    - argparse
-    - cryptography
+
+This script uses the following third-party libraries:
+    - requests      (https://requests.readthedocs.io/en/master/)
+    - cryptography  (https://cryptography.io/en/latest/)
+    - openpyxl      (https://openpyxl.readthedocs.io/en/stable/)
+
+Dependencies:
+    - ghas_enc_key.py
 
 Package: ghas_report.py
-Version: 1.1.0
-Date: 2023-04-14
+Version: 1.2.0
+Date: 2023-04-17
 
 Author: Rupert Herbst <rhe8502(at)pm.me>
 Project URL: https://github.com/rhe8502/ghas_report
 License: Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 """
-# Copyright (c) 2023 Rupert Herbst
+# Copyright (C) 2023 Rupert Herbst
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -69,6 +83,9 @@ License: Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from openpyxl.utils import get_column_letter
+from openpyxl.styles import PatternFill, Font, Border, Side, Alignment
+from openpyxl.worksheet.hyperlink import Hyperlink
 from cryptography.fernet import Fernet
 from datetime import datetime
 import argparse
@@ -79,6 +96,7 @@ import os
 import sys
 import time
 import re
+import openpyxl
 
 def api_error_response(response):
     """Generate error message from API response.
@@ -127,7 +145,6 @@ def get_scan_alerts(api_url, org_name=None, call_func=None, owner=None, repo_nam
         alerts_count(alerts, sev_counts)
         get_next_page_link(link_header)
     """
-
     scan_types = {
         'codescan': 'code-scanning',
         'secretscan': 'secret-scanning',
@@ -159,7 +176,6 @@ def get_scan_alerts(api_url, org_name=None, call_func=None, owner=None, repo_nam
         Returns:
             None
         """
-
         nonlocal open_alert_count
         for alert in alerts:
             if alert['state'] == 'open':
@@ -183,7 +199,6 @@ def get_scan_alerts(api_url, org_name=None, call_func=None, owner=None, repo_nam
         Returns:
             str: The URL of the next page, or None if not found.
         """
-
         if link_header:
             next_page_link = re.search(r'<(.+?)>; rel="next"', link_header)
             return next_page_link.group(1) if next_page_link else None
@@ -252,7 +267,6 @@ def process_alerts_count(api_url, project_data):
     Returns:
         dict: A dictionary containing the raw alert count data and the processed alert count data as lists.
     """
-
     alert_count = []
 
     scan_types = {
@@ -279,11 +293,204 @@ def process_alerts_count(api_url, project_data):
 
     return {'raw_alerts': alert_count, 'scan_alerts': alert_count}
 
-def write_alerts(alert_data, project_name, output_type=None, report_dir='', call_func=None):
-    """Writes the processed scan alert data to a file in the specified format (CSV or JSON).
+def get_theme(output_theme):
+    """Return a dictionary of formatting settings based on the specified output theme.
+
+    Args:
+        output_theme (str): The name of the desired output theme. Available options are 'grey', 'blue', 'rose', 'green',
+                            'purple', 'aqua', and 'orange'. If no option is provided, the default 'grey'
+                            theme will be used.
+
+    Returns:
+        dict: A dictionary of formatting settings including header and row fill colors, font styles, border styles,
+              and cell alignment settings. The specific settings are determined by the specified output theme.
+    """
+    theme_settings = {
+        'grey': {'header_fill_color': '232323', 'odd_row_fill_color': 'F2F2F2', 'border_color': 'BFBFBF'},
+        'blue': {'header_fill_color': '4F81BD', 'odd_row_fill_color': 'DCE6F1', 'border_color': '95B3D7'},
+        'rose': {'header_fill_color': 'C0504D', 'odd_row_fill_color': 'F2DCDB', 'border_color': 'DA9694'},
+        'green': {'header_fill_color': '9BBB59', 'odd_row_fill_color': 'EBF1DE', 'border_color': 'C4D79B'},
+        'purple': {'header_fill_color': '8064A2', 'odd_row_fill_color': 'E4DFEC', 'border_color': 'B1A0C7'},
+        'aqua': {'header_fill_color': '4BACC6', 'odd_row_fill_color': 'DAEEF3', 'border_color': '92CDDC'},
+        'orange': {'header_fill_color': 'F79646', 'odd_row_fill_color': 'FDE9D9', 'border_color': 'FABF8F'}
+    }
+
+    settings = theme_settings.get(output_theme, theme_settings['grey'])
+
+    theme = {
+        'header_fill': PatternFill(start_color=settings['header_fill_color'], end_color=settings['header_fill_color'], fill_type="solid"),
+        'header_font': Font(bold=True, color="FFFFFF", size=11),
+        'odd_row_fill': PatternFill(start_color=settings['odd_row_fill_color'], end_color=settings['odd_row_fill_color'], fill_type="solid"),
+        'even_row_fill': PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid"),
+        'data_font': Font(size=11),
+        'thin_border': Border(
+            left=Side(style='thin', color=settings['border_color']),
+            right=Side(style='thin', color=settings['border_color']),
+            top=Side(style='thin', color=settings['border_color']),
+            bottom=Side(style='thin', color=settings['border_color'])
+        ),
+        'cell_alignment': Alignment(vertical="center", wrap_text=False),
+        'hyperlink_style': Font(color="0000EE", size=11, underline="single"),
+        'hyperlink_alignment': Alignment(vertical="center", wrap_text=False)
+    }
+
+    return theme
+
+def write_xlsx(header_row, alert_data, project_name, filepath, call_func, output_theme=None):
+    """Writes alert data to an XLSX file.
+
+    This function takes the given header row, alert data, project name, file path, and the function name calling write_xlsx
+    and creates an XLSX file with the given information. The function calls the 'get_theme' function to fetch the color theme
+    of the output file. The output theme variable can be used to specify the color of the output file.
+
+    Args:
+        header_row (list): A list of column header labels for the XLSX file.
+        alert_data (dict): A dictionary containing the alert data to be written to the XLSX file.
+        project_name (str): The name of the project for which the alert data is being written.
+        filepath (str): The full file path where the XLSX file will be saved.
+        call_func (str): The function calling write_xlsx, used to set the sheet name and select appropriate headers for the output file.
+        output_theme (str, optional): The color theme of the output file. Default is None.
+
+    Returns:
+        None
+    """
+    # Call the get_theme function and store the returned theme dictionary
+    theme = get_theme(output_theme)
+
+    # Replace the theme-related variables with values from the theme dictionary
+    header_fill = theme['header_fill']
+    header_font = theme['header_font']
+    odd_row_fill = theme['odd_row_fill']
+    even_row_fill = theme['even_row_fill']
+    data_font = theme['data_font']
+    thin_border = theme['thin_border']
+    cell_alignment = theme['cell_alignment']
+    hyperlink_style = theme['hyperlink_style']
+    hyperlink_alignment = theme['hyperlink_alignment']
+
+    try:
+        wb = openpyxl.load_workbook(filepath)
+    except FileNotFoundError:
+        wb = openpyxl.Workbook()
+    
+    # Add a new worksheet with the name of the function calling write_xlsx
+    ws = wb.create_sheet(call_func)
+
+    # Remove the default "Sheet" if it exists
+    if "Sheet" in wb.sheetnames:
+        default_sheet = wb["Sheet"]
+        wb.remove(default_sheet)
+
+    for col_num, col_data in enumerate(header_row):
+        cell = ws.cell(row=1, column=col_num + 1, value=col_data)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.border = thin_border
+        cell.alignment = cell_alignment
+
+    # Set filter on the header row
+    ws.auto_filter.ref = f"A1:{openpyxl.utils.get_column_letter(len(header_row))}1"
+
+    # Write the data rows and apply alternate row colors
+    for row_num, row_data in enumerate(alert_data['scan_alerts'], start=2):
+        row_fill = odd_row_fill if row_num % 2 == 0 else even_row_fill
+        for col_num, col_data in enumerate(row_data):
+            cell = ws.cell(row=row_num, column=col_num + 1, value=col_data)
+
+            # Check if the cell value is zero, then set the data type to 'n' (number)
+            if col_data == '0':
+                cell.data_type = 'n'
+    
+            cell.fill = row_fill
+            cell.font = data_font
+            cell.border = thin_border
+            cell.alignment = cell_alignment
+
+    # Set this flag to True if the current sheet contains URLs
+    contains_urls = True  # Change this value based on your sheet's content
+
+    if call_func != 'alert_count' and contains_urls:
+        # Assuming the last column contains URLs, loop through the rows and add hyperlinks
+        url_column = len(header_row)  # Change this value if the URL column is not the last one
+        for row_num in range(2, len(alert_data['scan_alerts']) + 2):
+            cell = ws.cell(row=row_num, column=url_column)
+            url = cell.value
+            if url:
+                try:
+                    # Add the friendly name as the URL itself
+                    cell.value = f'=HYPERLINK("{url}", "{url}")'
+                    cell.font = hyperlink_style
+                    cell.alignment = hyperlink_alignment
+                except Exception as e:
+                        print(f"Error while processing hyperlink at row {row_num}: {e}")
+
+    if call_func == 'alert_count':
+        # Calculate the total for each column in the first worksheet
+        first_ws = wb.worksheets[0]
+        last_row = first_ws.max_row
+
+        # Define cell formatting styles
+        bold_font = Font(bold=True)
+        border_style = Border(top=Side(style='medium', color=theme['thin_border'].top.color),
+                     bottom=Side(style='medium', color=theme['thin_border'].bottom.color))
+        white_fill = PatternFill(start_color='FFFFFF', end_color='FFFFFF', fill_type='solid')
+        first_ws.cell(row=last_row + 1, column=1, value="Total").font = bold_font
+
+        # Loop through the columns and calculate the total
+        for col_num in range(4, 12):  # Columns D-K (4-11)
+            column_letter = openpyxl.utils.get_column_letter(col_num)
+            column_total = sum(first_ws.cell(row=row_num, column=col_num).value for row_num in range(2, last_row + 1))
+            cell = first_ws[f"{column_letter}{last_row + 1}"]
+            cell.value = column_total
+        
+        for col_num in range (1, 12):
+            cell = first_ws.cell(row=last_row + 1, column=col_num)
+            cell.border = border_style
+            cell.font = bold_font
+            cell.fill = white_fill
+
+    # Set the maximum cell length - default is 60
+    max_cell_length = 60 
+    
+    #Adjust padding for column width, if needed - default is 0
+    padding = 0
+    
+    # Autosize column width
+    for col_num, col_data in enumerate(header_row, start=1):
+        max_length = 0
+        column_letter = openpyxl.utils.get_column_letter(col_num)
+
+        for row_num in range(1, len(alert_data['scan_alerts']) + 3):  # +3 to include header and one extra row for safety
+            cell_value = str(ws.cell(row=row_num, column=col_num).value)
+            cell_length = len(cell_value)
+            max_length = max(max_length, cell_length)
+
+        # Limit the maximum column width to the specified maximum cell length
+        max_length = min(max_length, max_cell_length)
+
+        # Set the column width
+        ws.column_dimensions[column_letter].width = max_length + padding
+
+    # Add extra padding for the header row to compensate for the filter dropdown icon
+    header_padding = 5  # Adjust this value as needed
+    for col_num, col_data in enumerate(header_row, start=1):
+        column_letter = openpyxl.utils.get_column_letter(col_num)
+        ws.column_dimensions[column_letter].width += header_padding
+    
+    # Freeze top row
+    ws.freeze_panes = "A2"
+
+    # Save workbook
+    wb.save(filepath)
+    print(f"Wrote {call_func} for \"{project_name}\" to {filepath}")
+
+def write_alerts(alert_data, project_name, output_type=None, output_theme=None, report_dir='', call_func=None, time_stamp=None):
+    """Writes the processed scan alert data to a file in the specified format (CSV, XLSX, or JSON).
 
     Description:
-        The function writes the processed scan alert data to a file in the specified output format (CSV or JSON). It sets the column headers for the CSV file depending on the type of alert. If the output type is not specified, it defaults to 'csv'. The function creates a file path based on the report directory, project name, alert type, and the current date and time.
+        The function writes the processed scan alert data to a file in the specified output format (CSV, XLSX, or JSON).
+        It sets the column headers for the CSV file depending on the type of alert. If the output type is not specified, it defaults to 'csv'.
+        The function creates a file path based on the report directory, project name, alert type, and the current date and time.
 
     Args:
         alert_data (dict): A dictionary containing processed alert data.
@@ -295,16 +502,14 @@ def write_alerts(alert_data, project_name, output_type=None, report_dir='', call
     Raises:
         SystemExit: If there's an error writing to the file.
     """
+    # Set scan type to GHAS-Report if xlsx is defined, otherwise set it to the call_func
+    scan_type = 'GHAS_Report' if output_type == 'xlsx' else call_func
 
-    # Set output type to CSV is none defined
-    # output_type = output_type if output_type is not None else 'csv'
-    output_type = 'csv' if output_type is None else output_type
-    
     # Check if a report path is defined and create the file path, otherwise create a folder for the current date and create the file path
     if report_dir:
-        filepath = os.path.join(report_dir, f"{project_name}-{call_func}-{datetime.now():%Y%m%d%H%M%S}.{output_type}")
+        filepath = os.path.join(report_dir, f"{project_name}-{scan_type}-{time_stamp}.{output_type}")
     else:
-        filepath = os.path.join(report_dir, f"{datetime.now().strftime('%Y%m%d')}", f"{project_name}-{call_func}-{datetime.now():%Y%m%d%H%M%S}.{output_type}")
+        filepath = os.path.join(report_dir, f"{datetime.now().strftime('%Y%m%d')}", f"{project_name}-{scan_type}-{time_stamp}.{output_type}")
 
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
    
@@ -315,22 +520,26 @@ def write_alerts(alert_data, project_name, output_type=None, report_dir='', call
         'secret_scan': ['Alert', 'Organization', 'Repository', 'Date Created', 'Date Updated', 'Days Open', 'State', 'Resolved At', 'Resolved By', 'Resolved Reason', 'Secret Type Name', 'Secret Type', 'GitHub URL'],
         'dependabot_scan': ['Alert', 'Organization', 'Repository', 'Date Created', 'Date Updated', 'Days Open', 'Severity', 'State', 'Package Name', 'CVE ID', 'Summary', 'Fixed At', 'Dismissed At', 'Dismissed By', 'Dismissed Reason', 'Dismissed Comment', 'Scope', 'Manifest ID', 'GitHub URL']
     }
-    
-    # Write the alert data to a file in the specified format
-    try:
-        with open(filepath, 'w', encoding='utf-8', newline='') as f:
-            writer = csv.writer(f) if output_type == 'csv' else None
-            header_row = scan_options.get(call_func, scan_options['code_scan']) if output_type == 'csv' else None
 
-            if output_type == 'json':
-                json.dump(alert_data['raw_alerts'], f, indent=4)
-                print(f"Wrote {call_func} for \"{project_name}\" to {filepath}")
-            elif output_type == 'csv':
-                writer.writerow(header_row)
-                writer.writerows(alert_data['scan_alerts'])
-                print(f"Wrote {call_func} for \"{project_name}\" to {filepath}")
-    except IOError as e:
-        raise SystemExit(f"Error writing to {e.filename}: {e}")
+    # Set the header row
+    header_row = scan_options.get(call_func, [])
+    
+    # Write the alert data to a file in the specified format, if none is specified, default to CSV
+    if output_type == 'xlsx':
+        write_xlsx(header_row, alert_data, project_name, filepath, call_func, output_theme)
+    else:
+        try:
+            with open(filepath, 'w', encoding='utf-8', newline='') as f:
+                writer = csv.writer(f) if output_type == 'csv' else None
+                if output_type == 'json':
+                    json.dump(alert_data['raw_alerts'], f, indent=4)
+                    print(f"Wrote {call_func} for \"{project_name}\" to {filepath}")
+                elif output_type == 'csv':
+                    writer.writerow(header_row)
+                    writer.writerows(alert_data['scan_alerts'])
+                    print(f"Wrote {call_func} for \"{project_name}\" to {filepath}")
+        except IOError as e:
+            raise SystemExit(f"Error writing to {e.filename}: {e}")
 
 def safe_get(alert, keys, default=''):
     """Safely retrieves the value from a nested dictionary using a list of keys.
@@ -372,7 +581,6 @@ def process_scan_alerts(api_url, project_data, call_func, output_type=None ,stat
     Returns:
         dict: A dictionary containing raw_alerts and processed scan_alerts.
     """
-
     raw_alerts = []
     scan_alerts = []
 
@@ -407,7 +615,6 @@ def process_scan_alerts(api_url, project_data, call_func, output_type=None ,stat
                         # Add Code Scanning alert data to the list
                         if call_func == 'codescan':
                             alert_data.extend([
-                                # safe_get(alert, ['rule', 'security_severity_level'], ''),
                                 safe_get(alert, ['rule', 'security_severity_level']) or safe_get(alert, ['rule', 'severity'], ''),
                                 safe_get(alert, ['state'], ''),
                                 safe_get(alert, ['rule', 'id'], ''),
@@ -478,7 +685,6 @@ def load_configuration(args):
     SystemExit: If the configuration file, keyfile, or API key is not found or if the
     API key is corrupted.
     """
-
     # Configuration file name and encryption key file name
     conf_file_name = 'ghas_config.json'
     env_file_name = '.ghas_env'
@@ -544,17 +750,19 @@ def setup_argparse():
     Returns:
         argparse.ArgumentParser: The configured ArgumentParser object.
     """
-    # version, date, and project URL
-    version_number = '1.1.0'
-    release_date = '2023-04-14'
+    # Version number, release date, URL, license, and author
+    version_number = '1.2.0'
+    release_date = '2023-04-17'
+    license = 'Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0)'
     url = 'https://github.com/rhe8502/ghas_report'
+    author = "Rupert Herbst <rhe8502(at)pm.me>"
 
     # version string
-    version_string = f"GHAS Reporting Tool v{version_number} ({url})\nRelease Date: {release_date}\n"
-   
+    version_string = f"\n\nGitHub Advanced Security Reporting Tool v{version_number} ({release_date})\n\n{license}\nProject URL: {url}\n\nWritten by {author}"
+
     # Command-line arguments parser
     parser = argparse.ArgumentParser(description='''The script is designed to retrieve various types of GitHub Advanced Security (GHAS) alerts for a specified organization or repository. GHAS alerts can include Code scanning alerts, Secret scanning alerts, and Dependabot alerts.
-                                                    \nIt will generate a report based on the specified options and write the results to a file. The output format of the report can also be specified using command-line options. The supported formats are CSV and JSON. By default, the output is written to a CSV file. If the -wA option is specified, then the report will be written to all supported formats.''', formatter_class=argparse.RawTextHelpFormatter)
+                                                    \nThe script will generate a report based on the specified options and write the results to a file. The output format of the report can be specified using command-line options. The supported formats are CSV, XLSX and JSON. If no file format argument is specified then the output is written to a CSV file. If the -wA option is specified, then the report(s) will be written to all supported formats.''', formatter_class=argparse.RawTextHelpFormatter)
 
     # Options group
     parser.add_argument('-v', '--version', action='version', version=(version_string), help="show program's version number and exit")
@@ -567,18 +775,26 @@ def setup_argparse():
     alert_group.add_argument('-s', '--secretscan', action='store_true', help='generate Secret Scanning alert report')
     alert_group.add_argument('-d', '--dependabot', action='store_true', help='generate Dependabot alert report')
 
+    # Optional alert state arguments
+    alert_state_group = parser.add_argument_group('Optional alert state arguments')
+    alert_state_group.add_argument('-o', '--open', action='store_true', help='generate report(s) for open alerts only - note: this setting has no effect on the alert count report "--alerts", which only includes open alerts')
+
+    # Output file format arguments
+    output_group = parser.add_argument_group('Output file format arguments')
+    output_group.add_argument('-wA', '--write-all', action='store_true', help='write output to all formats at once')
+    output_group.add_argument('-wC', '--csv', action='store_true', help='write output to a CSV file (default format)')
+    output_group.add_argument('-wX', '--xlsx', action='store_true', help='write output to a Microsoft Excel file')
+    output_group.add_argument('-wJ', '--json', action='store_true', help='write output to a JSON file')
+     
+    # Optional file format arguments
+    output_format_group = parser.add_argument_group('Optional file format arguments')
+    output_format_group.add_argument('-t', '--theme', metavar='<theme>', type=str, choices=['grey', 'blue', 'rose', 'green', 'purple', 'aqua', 'orange'], default='grey', help='specify the color theme for "xlsx" file output. Valid keywords are "grey", "blue", "green", "rose", "purple", "aqua", "orange". If none is specified, defaults to "grey".')
+
     # Optional alert reports arguments
     alert_options_group = parser.add_argument_group('Optional alert report arguments')
-    alert_options_group.add_argument('-o', '--open', action='store_true', help='generate report(s) for open alerts only (note: this has no effect on Alert Count report "-l)"')
     alert_options_group.add_argument('-n', '--owner', metavar='<owner>', type=str, help='specify the owner of a GitHub repository, or organization. required if the "--repo" or "--org" options are specified.')
     alert_options_group.add_argument('-g', '--org', metavar='<org>', type=str, help='specify the name of a GitHub organization. This option is mutually exclusive with the "--repo" option. The "--owner" option is required if this option is specified.')
     alert_options_group.add_argument('-r', '--repo', metavar='<repo>', type=str, help='specify the name of a GitHub repository. This option is mutually exclusive with the "--org" option. The "--owner" option is required if this option is specified.')
-   
-    # Output file format arguments
-    output_group = parser.add_argument_group('Output file format arguments')
-    output_group.add_argument('-wA', '--output-all', action='store_true', help='write output to all formats at once')
-    output_group.add_argument('-wC', '--output-csv', action='store_true', help='write output to a CSV file (default format)')
-    output_group.add_argument('-wJ', '--output-json', action='store_true', help='write output to a JSON file')
 
     # Optional location arguments
     location_options_group = parser.add_argument_group('Optional location arguments')
@@ -602,14 +818,13 @@ def check_args_errors(args, parser):
     Raises:
         SystemExit: If any errors or inconsistencies are detected in the command-line arguments.
     """
-
     if len(sys.argv) == 1:
         parser.print_help()
         raise SystemExit('\nError: No arguments specified. Please specify at least one alert type --all, --alerts, --codescan, --secretscan, or --dependabot.\n')
     elif not any([args.all, args.alerts, args.codescan, args.secretscan, args.dependabot]):
         parser.print_help()
         raise SystemExit('\nError: No alert type specified. Please specify at least one alert type --all, --alerts, --codescan, --secretscan, or --dependabot.\n')
-    elif args.output_all and (args.output_csv or args.output_json):
+    elif args.write_all and (args.csv or args.json):
         parser.print_help()
         raise SystemExit('\nError: --output-all cannot be used together with --output-csv or --output-json\n')
     elif args.repo and args.org:
@@ -639,7 +854,6 @@ def process_args(parser):
     Raises:
         SystemExit: If any errors or inconsistencies are detected in the command-line arguments.
     """
-
     args = parser.parse_args()
 
     # Call the check_args_errors function with the arguments and parser
@@ -649,7 +863,10 @@ def process_args(parser):
     alert_types = ['alerts', 'codescan', 'secretscan', 'dependabot'] if args.all else [alert_type for alert_type in ['alerts', 'codescan', 'secretscan', 'dependabot'] if getattr(args, alert_type)]
     
     # Define the list of output types to process. If the -wA flag is present, include all output types. Otherwise, include only the output types that were passed as arguments, if no output types are specified, default to CSV
-    output_types = ['csv', 'json'] if args.output_all else [output_type for output_type in ['csv', 'json'] if getattr(args, f'output_{output_type}')] or ['csv']
+    output_types = ['csv', 'xlsx', 'json'] if args.write_all else [output_type for output_type in ['csv', 'xlsx', 'json'] if getattr(args, output_type)] or ['csv']
+    
+    # Get the theme color from the --theme flag, or default to 'grey'
+    output_theme = args.theme
 
     # Set state to 'open' if the -o ,or --open flag is present
     alert_state = 'open' if args.open else ''
@@ -659,6 +876,7 @@ def process_args(parser):
     config, headers = load_configuration(args)
     api_url = config.get('connection', {}).get('gh_api_url', '') or "https://api.github.com"
     report_dir = args.reports or config.get('location', {}).get('reports', '')
+    time_stamp = datetime.now().strftime('%Y%m%d%H%M%S')
     
     # Check if the org or repo arguments are present. If they are, set use_config to False. Otherwise, set use_config to True
     use_config = not (args.org or args.repo)
@@ -669,15 +887,15 @@ def process_args(parser):
         else config.get('projects', {})
     )
 
-    # Three nested for loops to iterate through the projects, alert types, and output types
+    # Iterate through projects, alert types, and output types
     for project_name, project_data in projects.items():
         for alert_type in alert_types:
             for output_type in output_types:
                 {
-                    'alerts': lambda: write_alerts(process_alerts_count(api_url, project_data), project_name, output_type, report_dir, call_func='alert_count'),
-                    'codescan': lambda output_type=output_type: write_alerts(process_scan_alerts(api_url, project_data, 'codescan', output_type, alert_state), project_name, output_type, report_dir, call_func='code_scan'),
-                    'secretscan': lambda output_type=output_type: write_alerts(process_scan_alerts(api_url, project_data, 'secretscan', output_type, alert_state), project_name, output_type, report_dir, call_func='secret_scan'),
-                    'dependabot': lambda output_type=output_type: write_alerts(process_scan_alerts(api_url, project_data, 'dependabot', output_type, alert_state), project_name, output_type, report_dir, call_func='dependabot_scan'),
+                    'alerts': lambda: write_alerts(process_alerts_count(api_url, project_data), project_name, output_type, output_theme, report_dir, call_func='alert_count', time_stamp=time_stamp),
+                    'codescan': lambda output_type=output_type: write_alerts(process_scan_alerts(api_url, project_data, 'codescan', output_type, alert_state), project_name, output_type, output_theme, report_dir, call_func='code_scan', time_stamp=time_stamp),
+                    'secretscan': lambda output_type=output_type: write_alerts(process_scan_alerts(api_url, project_data, 'secretscan', output_type, alert_state), project_name, output_type, output_theme, report_dir, call_func='secret_scan', time_stamp=time_stamp),
+                    'dependabot': lambda output_type=output_type: write_alerts(process_scan_alerts(api_url, project_data, 'dependabot', output_type, alert_state), project_name, output_type, output_theme, report_dir, call_func='dependabot_scan', time_stamp=time_stamp),
                 }[alert_type]()
 
 def execution_time(start_time):

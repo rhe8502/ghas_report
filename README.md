@@ -2,7 +2,7 @@
 
 ## Description
 
-The GHAS Reporting tool is a Python script designed to retrieve various types of GitHub Advanced Security (GHAS) alerts for specified organizations or repositories and generate a report based on the provided options. The output formats supported are CSV and JSON.
+The GHAS Reporting tool is a Python script designed to retrieve various types of GitHub Advanced Security (GHAS) alerts for specified organizations or repositories and generate a report based on the provided options. The output formats supported are CSV, XLSX and JSON.
 
 Supported alert types are code scanning (vulnerabilities in source code), secret scanning (exposed sensitive data), and dependabot alerts (security risks and outdated dependencies).
 
@@ -23,11 +23,9 @@ During execution of the script the --owner and --repo, or --org options must be 
 
 GitHub Advanced Security is a suite of security tools provided by GitHub to help protect your code and detect vulnerabilities before they reach production. GHAS includes Code scanning, Secret scanning, and Dependabot alerts. For more information, visit [GitHub Advanced Security](https://docs.github.com/en/github-ae@latest/code-security).
 
-
 <p align="center">
   <img src="./assets/ghas_report.gif" alt="Terminal with GHAS reporting script running">
 </p>
-
 
 ## Prerequisites
 
@@ -78,7 +76,19 @@ python3 ghas_report.py -a
 
 This command generates all alert reports, including Alert Count, Code Scanning, Secret Scanning, and Dependabot alert reports, in the default CSV format.
 
-### Example 2: Generate all open alerts report in JSON format
+### Example 2: Generate all alert reports in Microsoft Excel format and apply green table style
+
+```bash
+python3 ghas_report.py --all --xlsx --theme green
+```
+
+<p align="center">
+  <img src="./assets/ghas_excel_green.gif" alt="GHAS Excel Report">
+</p>
+
+This command generates all alert reports, including Alert Count, Code Scanning, Secret Scanning, and Dependabot alert reports, in the Microsoft Excel (xlsx) format and applies a olive green table style.
+
+### Example 3: Generate all open alerts report in JSON format
 
 ```bash
 python3 ghas_report.py -a -o -wJ
@@ -88,7 +98,7 @@ This command generates all open alert reports, including Alert Count, Code Scann
 
 Please note that the Alert Count report lists only open alerts by default, even without specifying the `-o` option.
 
-### Example 3: Generate a Code Scan alert report and a Secret Scanning alert report in CSV format
+### Example 4: Generate a Code Scan alert report and a Secret Scanning alert report in CSV format
 
 ```bash
 python3 ghas_report.py -c -s
@@ -96,7 +106,7 @@ python3 ghas_report.py -c -s
 
 This command generates both a Code Scan alert report and a Secret Scanning alert report in the default CSV format.
 
-### Example 4: Generate a Dependabot alert report in all formats and specify a custom reports directory
+### Example 5: Generate a Dependabot alert report in all formats and specify a custom reports directory
 
 ```bash
 python3 ghas_report.py -d -wA -lr /path/to/reports
@@ -104,7 +114,7 @@ python3 ghas_report.py -d -wA -lr /path/to/reports
 
 This command generates a Dependabot alert report and writes the output to all supported formats (CSV and JSON) in a custom reports directory specified by `/path/to/reports`.
 
-### Example 5: Generate an open alerts report in JSON format with custom configuration and key file locations
+### Example 6: Generate an open alerts report in JSON format with custom configuration and key file locations
 
 ```bash
 python3 ghas_report.py -l -wJ -lc /path/to/ghas_conf.json -lk /path/to/.ghas_env
@@ -118,20 +128,29 @@ For more usage examples and options, refer to the options sections for each scri
 
 | Option | Description |
 | ----------- | ----------- |
+| **Options:** |
 | -h, --help | Show help message and exit |
 | -v, --version | Show program's version number and exit |
+| **Generate alert reports:** |
 | -a, --all | Generate all alert reports |
 | -l, --alerts | Generate Alert Count report |
 | -c, --codescan | Generate Code Scan alert report |
 | -s, --secretscan | Generate Secret Scanning alert report |
 | -d, --dependabot | Generate Dependabot alert report |
+| **Optional alert state arguments:** |
 | -o, --open | Generate report(s) for open alerts only |
+| **Output file format arguments:** |
+| -wA, --write-all | Write output to all formats at once |
+| -wC, --csv | Write output to a CSV file (default format) |
+| -wX, --xlsx | Write output to a Microsoft Excel file |
+| -wJ, --json | Write output to a JSON file |
+| **Optional file format arguments:** |
+| -t <theme>, --theme <theme>| Specify the color theme for "xlsx" file output. Valid keywords are "grey", "blue", "green", "rose", "purple", "aqua", "orange". If none is specified, defaults to "grey".|
+| **Optional alert report arguments:** |
 | -n, --owner | Specify the owner of a GitHub repository, or organization |
 | -g, --org | Specify the name of a GitHub organization |
 | -r, --repo | Specify the name of a GitHub repository |
-| -wA, --output-all | Write output to all formats at once |
-| -wC, --output-csv | Write output to a CSV file (default format) |
-| -wJ, --output-json | Write output to a JSON file |
+| **Optional location arguments:** |
 | -lc \<PATH\>, --config \<PATH\> | Specify file location for the configuration file ("ghas_conf.json") |
 | -lk \<PATH\>, --keyfile \<PATH\> | Specify file location for the encryption key file (".ghas_env") - overrides the location specified in the configuration file |
 | -lr \<PATH\>, --reports \<PATH\> | Specify file location for the reports directory - overrides the location specified in the configuration file |
@@ -152,6 +171,7 @@ For more usage examples and options, refer to the options sections for each scri
 The **"ghas_config.json"** JSON configuration file is used to specify connection details, location and project information for the GitHub Advanced Security (GHAS) reporting tool.  A sample configuration file **"ghas_config_example.json""** is included in the repo. Simply rename the file to **"ghas_config.json"** and run the initial setup script to securely store your GitHub API key, then populate the file with your unique project information.
 
 ### Connection section
+
 ```json
 {
     "connection": {

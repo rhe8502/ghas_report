@@ -27,9 +27,18 @@ Options:
 Example:
     python ghas_enc_key.py -a -lc /path/to/config -lk /path/to/keyfile -lr /path/to/reports
 
+Requirements:
+    - Python 3.6 or later
+
+This script uses the following third-party libraries:
+    - cryptography  (https://cryptography.io/en/latest/)
+
+Dependencies:
+    - ghas_enc_key.py
+
 Package: ghas_enc_key.py
-Version: 1.1.0
-Date: 2023-04-14
+Version: 1.2.0
+Date: 2023-04-17
 
 Author: Rupert Herbst <rhe8502(at)pm.me>
 Project URL: https://github.com/rhe8502/ghas_report
@@ -202,8 +211,8 @@ def setup_argparse():
     argparse.ArgumentParser: An ArgumentParser object configured with the necessary arguments and options for the GHAS Reporting Setup Tool.
     """
      # version, date, and project URL
-    version_number = '1.1.0'
-    release_date = '2023-04-14'
+    version_number = '1.2.0'
+    release_date = '2023-04-17'
     url = 'https://github.com/rhe8502/ghas_report'
     
     # version string
