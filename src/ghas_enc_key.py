@@ -34,11 +34,11 @@ This script uses the following third-party libraries:
     - cryptography  (https://cryptography.io/en/latest/)
 
 Dependencies:
-    - ghas_enc_key.py
+    - ghas_report.py
 
 Package: ghas_enc_key.py
-Version: 1.2.0
-Date: 2023-04-17
+Version: 1.2.1
+Date: 2023-06-14
 
 Author: Rupert Herbst <rhe8502(at)pm.me>
 Project URL: https://github.com/rhe8502/ghas_report
@@ -210,13 +210,15 @@ def setup_argparse():
     Returns:
     argparse.ArgumentParser: An ArgumentParser object configured with the necessary arguments and options for the GHAS Reporting Setup Tool.
     """
-     # version, date, and project URL
-    version_number = '1.2.0'
-    release_date = '2023-04-17'
+    # Version number, release date, URL, license, and author
+    version_number = '1.2.1'
+    release_date = '2023-06-14'
+    license = 'Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0)'
     url = 'https://github.com/rhe8502/ghas_report'
-    
+    author = "Rupert Herbst <rhe8502(at)pm.me>"
+
     # version string
-    version_string = f"GHAS Reporting Setup Tool v{version_number} ({url})\nRelease Date: {release_date}\n"
+    version_string = f"\n\nGithub Advanced Security Reporting Setup Tool v{version_number} ({release_date})\n\n{license}\nProject URL: {url}\n\nWritten by {author}"
 
     # Command-line arguments parser
     parser = argparse.ArgumentParser(description='Store a GitHub API key for the GitHub Advanced Security (GHAS) Vulnerability Report script securely in a JSON configuration file.', formatter_class=argparse.RawTextHelpFormatter)
