@@ -1,8 +1,8 @@
 name: Email GHAS Reports
 
-on: push
-  #schedule:
-    # - cron: '00 05 * * *' # Run at 05:00 UTC every day
+on:
+  schedule:
+    - cron: '00 05 * * *' # Run at 05:00 UTC every day
 
 jobs:
   run_script_and_send_email:
