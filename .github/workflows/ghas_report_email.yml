@@ -2,7 +2,9 @@ name: Email GHAS Reports
 
 on:
   schedule:
-    - cron: '35 21 * * *' # Run at 00:00 UTC every day
+    # - cron: '35 21 * * *' # Run at 00:00 UTC every day
+    - cron: '15 17 * * *' # Run at 00:00 UTC every day
+
 
 jobs:
   run_script_and_send_email:
@@ -35,7 +37,7 @@ jobs:
               "gh_api_key": ""
             },
             "location": {
-              "reports": "",
+              "reports": "src/reports",
               "keyfile": ""
             },
             "projects": {
@@ -45,7 +47,8 @@ jobs:
                   "akigakita"
                 ],
                 "repositories": [
-                  "sectest"
+                  "dsva",
+                  "ghas_report"
                 ]
               }
             }
@@ -54,7 +57,7 @@ jobs:
       - name: Run Python script
         run: |
           . venv/bin/activate
-          python src/ghas_report.py --all -lr src/reports
+          python src/ghas_report.py --all --xlxs
         env:
           GH_API_KEY: ${{ secrets.GH_API_KEY }}
 
