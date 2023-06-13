@@ -62,8 +62,8 @@ Dependencies:
     - ghas_enc_key.py
 
 Package: ghas_report.py
-Version: 1.2.0
-Date: 2023-04-17
+Version: 1.2.1
+Date: 2023-06-14
 
 Author: Rupert Herbst <rhe8502(at)pm.me>
 Project URL: https://github.com/rhe8502/ghas_report
@@ -251,7 +251,7 @@ def get_scan_alerts(api_url, org_name=None, call_func=None, owner=None, repo_nam
 
     return scan_alerts, sev_list
 
-def process_alerts_count(api_url, project_data):
+def process_alerts_count(api_url, project_data, selected_scans):
     """Processes and retrieves the alert count for each scan type (Code Scan, Secret Scan, Dependabot Scan)
        for the specified organizations and repositories.
 
@@ -268,18 +268,12 @@ def process_alerts_count(api_url, project_data):
         dict: A dictionary containing the raw alert count data and the processed alert count data as lists.
     """
     alert_count = []
-
-    scan_types = {
-        'Code Scan': 'codescan',
-        'Secret Scan': 'secretscan',
-        'Dependabot Scan': 'dependabot'
-    }
-
+   
     for gh_entity in ['organizations', 'repositories']:
         for gh_name in project_data.get(gh_entity, []):
             if gh_name:
                 try:
-                    for scan_label, call_func in scan_types.items():
+                    for scan_label, call_func in selected_scans.items():
                         if gh_entity == 'organizations':
                             sev_list = get_scan_alerts(api_url, org_name=gh_name, call_func=call_func)[1]
                         elif gh_entity == 'repositories':
@@ -502,8 +496,8 @@ def write_alerts(alert_data, project_name, output_type=None, output_theme=None, 
     Raises:
         SystemExit: If there's an error writing to the file.
     """
-    # Set scan type to GHAS-Report if xlsx is defined, otherwise set it to the call_func
-    scan_type = 'GHAS_Report' if output_type == 'xlsx' else call_func
+    # Set scan type to ghas_reports if xlsx is defined, otherwise set it to the call_func
+    scan_type = 'ghas_report' if output_type == 'xlsx' else call_func
 
     # Check if a report path is defined and create the file path, otherwise create a folder for the current date and create the file path
     if report_dir:
@@ -751,8 +745,8 @@ def setup_argparse():
         argparse.ArgumentParser: The configured ArgumentParser object.
     """
     # Version number, release date, URL, license, and author
-    version_number = '1.2.0'
-    release_date = '2023-04-17'
+    version_number = '1.2.1'
+    release_date = '2023-06-14'
     license = 'Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0)'
     url = 'https://github.com/rhe8502/ghas_report'
     author = "Rupert Herbst <rhe8502(at)pm.me>"
@@ -824,6 +818,9 @@ def check_args_errors(args, parser):
     elif not any([args.all, args.alerts, args.codescan, args.secretscan, args.dependabot]):
         parser.print_help()
         raise SystemExit('\nError: No alert type specified. Please specify at least one alert type --all, --alerts, --codescan, --secretscan, or --dependabot.\n')
+    elif args.all and (args.alerts or args.codescan or args.secretscan or args.dependabot):
+        parser.print_help()
+        raise SystemExit('\nError: Already all alert types specified, --all cannot be used together with --alerts, --codescan, --secretscan, or --dependabot.\n')
     elif args.write_all and (args.csv or args.json):
         parser.print_help()
         raise SystemExit('\nError: --output-all cannot be used together with --output-csv or --output-json\n')
@@ -855,6 +852,27 @@ def process_args(parser):
         SystemExit: If any errors or inconsistencies are detected in the command-line arguments.
     """
     args = parser.parse_args()
+
+    # Define selected_scans and all_scans dictionary
+    selected_scans = {}
+    all_scans = {
+        'Code Scan': 'codescan',
+        'Secret Scan': 'secretscan',
+        'Dependabot Scan': 'dependabot'
+    }
+
+    if args.alerts and not any([args.codescan, args.secretscan, args.dependabot]):
+        selected_scans = all_scans
+    else:
+        if args.all:
+            selected_scans = all_scans
+        else:
+            if args.codescan:
+                selected_scans['Code Scan'] = 'codescan'
+            if args.secretscan:
+                selected_scans['Secret Scan'] = 'secretscan'
+            if args.dependabot:
+                selected_scans['Dependabot Scan'] = 'dependabot'
 
     # Call the check_args_errors function with the arguments and parser
     check_args_errors(args, parser)
@@ -892,7 +910,7 @@ def process_args(parser):
         for alert_type in alert_types:
             for output_type in output_types:
                 {
-                    'alerts': lambda: write_alerts(process_alerts_count(api_url, project_data), project_name, output_type, output_theme, report_dir, call_func='alert_count', time_stamp=time_stamp),
+                    'alerts': lambda: write_alerts(process_alerts_count(api_url, project_data, selected_scans), project_name, output_type, output_theme, report_dir, call_func='alert_count', time_stamp=time_stamp),
                     'codescan': lambda output_type=output_type: write_alerts(process_scan_alerts(api_url, project_data, 'codescan', output_type, alert_state), project_name, output_type, output_theme, report_dir, call_func='code_scan', time_stamp=time_stamp),
                     'secretscan': lambda output_type=output_type: write_alerts(process_scan_alerts(api_url, project_data, 'secretscan', output_type, alert_state), project_name, output_type, output_theme, report_dir, call_func='secret_scan', time_stamp=time_stamp),
                     'dependabot': lambda output_type=output_type: write_alerts(process_scan_alerts(api_url, project_data, 'dependabot', output_type, alert_state), project_name, output_type, output_theme, report_dir, call_func='dependabot_scan', time_stamp=time_stamp),
