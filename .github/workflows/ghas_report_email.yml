@@ -3,7 +3,7 @@ name: Email GHAS Reports
 on:
   schedule:
     # - cron: '35 21 * * *' # Run at 00:00 UTC every day
-    - cron: '30 17 * * *' # Run at 00:00 UTC every day
+    - cron: '10 18 * * *' # Run at 00:00 UTC every day
 
 
 jobs:
@@ -58,7 +58,7 @@ jobs:
       - name: Run Python script
         run: |
           . venv/bin/activate
-          python src/ghas_report.py --all --xlxs
+          python src/ghas_report.py --all --xlsx
         env:
           GH_API_KEY: ${{ secrets.GH_API_KEY }}
 
