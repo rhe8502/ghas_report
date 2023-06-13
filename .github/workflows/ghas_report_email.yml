@@ -57,7 +57,7 @@ jobs:
       - name: Run Python script
         run: |
           . venv/bin/activate
-          python ghas_report.py --all --xlsx
+          python src/ghas_report.py --all --xlsx
           ls -l > ls.txt
         env:
           GH_API_KEY: ${{ secrets.GH_API_KEY }}
