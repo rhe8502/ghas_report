@@ -45,7 +45,6 @@ jobs:
                   ""
                 ],
                 "repositories": [
-                  "dsva",
                   "ghas_report"
                 ]
               }
