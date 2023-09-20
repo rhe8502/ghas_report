@@ -7,4 +7,4 @@ idna==3.4
 openpyxl==3.1.2
 pycparser==2.21
 requests==2.31.0
-urllib3==2.0.4
+urllib3==2.0.5
