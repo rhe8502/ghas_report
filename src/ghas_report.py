@@ -62,8 +62,8 @@ Dependencies:
     - ghas_enc_key.py
 
 Package: ghas_report.py
-Version: 1.2.2
-Date: 2023-08-02
+Version: 1.2.3
+Date: 2024-01-12
 
 Author: Rupert Herbst <rhe8502(at)pm.me>
 Project URL: https://github.com/rhe8502/ghas_report
@@ -745,8 +745,8 @@ def setup_argparse():
         argparse.ArgumentParser: The configured ArgumentParser object.
     """
     # Version number, release date, URL, license, and author
-    version_number = '1.2.2'
-    release_date = '2023-08-02'
+    version_number = '1.2.3'
+    release_date = '2024-01-22'
     license = 'Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0)'
     url = 'https://github.com/rhe8502/ghas_report'
     author = "Rupert Herbst <rhe8502(at)pm.me>"
