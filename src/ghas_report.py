@@ -746,7 +746,7 @@ def setup_argparse():
     """
     # Version number, release date, URL, license, and author
     version_number = '1.2.3'
-    release_date = '2024-01-22'
+    release_date = '2024-01-12'
     license = 'Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0)'
     url = 'https://github.com/rhe8502/ghas_report'
     author = "Rupert Herbst <rhe8502(at)pm.me>"
