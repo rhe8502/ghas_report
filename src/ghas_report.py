@@ -38,7 +38,7 @@ Output file format arguments:
 
 Optional file format arguments:
   -t <theme>, --theme <theme>
-                        specify the color theme for "xlsx" file output. Valid keywords are "grey", "blue", "green", "rose", "purple", "aqua", "orange". If none is specified, defaults to "grey"
+                        specify the color theme for "xlsx" file output. Valid keywords are "grey", "blue", "green", "sakura", "purple", "aqua", "orange". If none is specified, defaults to "grey"
 
 Optional alert report arguments:
   -n, --owner           specify the owner of a GitHub repository, or organization. required if the "--repo" or "--org" options are specified.
@@ -291,7 +291,7 @@ def get_theme(output_theme):
     """Return a dictionary of formatting settings based on the specified output theme.
 
     Args:
-        output_theme (str): The name of the desired output theme. Available options are 'grey', 'blue', 'rose', 'green',
+        output_theme (str): The name of the desired output theme. Available options are 'grey', 'blue', 'sakura', 'green',
                             'purple', 'aqua', and 'orange'. If no option is provided, the default 'grey'
                             theme will be used.
 
@@ -302,7 +302,7 @@ def get_theme(output_theme):
     theme_settings = {
         'grey': {'header_fill_color': '232323', 'odd_row_fill_color': 'F2F2F2', 'border_color': 'BFBFBF'},
         'blue': {'header_fill_color': '4F81BD', 'odd_row_fill_color': 'DCE6F1', 'border_color': '95B3D7'},
-        'rose': {'header_fill_color': 'C0504D', 'odd_row_fill_color': 'F2DCDB', 'border_color': 'DA9694'},
+        'sakura': {'header_fill_color': 'C0504D', 'odd_row_fill_color': 'F2DCDB', 'border_color': 'DA9694'},
         'green': {'header_fill_color': '9BBB59', 'odd_row_fill_color': 'EBF1DE', 'border_color': 'C4D79B'},
         'purple': {'header_fill_color': '8064A2', 'odd_row_fill_color': 'E4DFEC', 'border_color': 'B1A0C7'},
         'aqua': {'header_fill_color': '4BACC6', 'odd_row_fill_color': 'DAEEF3', 'border_color': '92CDDC'},
@@ -782,7 +782,7 @@ def setup_argparse():
      
     # Optional file format arguments
     output_format_group = parser.add_argument_group('Optional file format arguments')
-    output_format_group.add_argument('-t', '--theme', metavar='<theme>', type=str, choices=['grey', 'blue', 'rose', 'green', 'purple', 'aqua', 'orange'], default='grey', help='specify the color theme for "xlsx" file output. Valid keywords are "grey", "blue", "green", "rose", "purple", "aqua", "orange". If none is specified, defaults to "grey".')
+    output_format_group.add_argument('-t', '--theme', metavar='<theme>', type=str, choices=['grey', 'blue', 'sakura', 'green', 'purple', 'aqua', 'orange'], default='grey', help='specify the color theme for "xlsx" file output. Valid keywords are "grey", "blue", "green", "sakura", "purple", "aqua", "orange". If none is specified, defaults to "grey".')
 
     # Optional alert reports arguments
     alert_options_group = parser.add_argument_group('Optional alert report arguments')
